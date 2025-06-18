@@ -9,6 +9,7 @@ selected = set()  # 비활성화된 자리 번호
 seat_buttons = []  # 자리 버튼들
 is_seat_creation_phase = False  # 자리 생성 단계인지 여부
 first_selected_seat = None  # 첫 번째 선택된 자리
+last_input_values = None  # 마지막 입력값 저장
 
 def toggle_exclude(num, button):
     if num in excluded:
@@ -47,13 +48,14 @@ def add_excluded_numbers():
         return False
 
 def generate_candidate_buttons():
-    global seat_buttons, selected, is_seat_creation_phase
+    global seat_buttons, selected, is_seat_creation_phase, first_selected_seat, last_input_values
     for widget in frame.winfo_children():
         widget.destroy()
     seat_buttons = []
     selected = set()  # 비활성화된 자리 초기화
     is_seat_creation_phase = True  # 자리 생성 단계 시작
-
+    first_selected_seat = None  # 첫 번째 선택된 자리 초기화
+    
     try:
         nums = int(entry1.get())
         cols = int(entry2.get())
@@ -63,6 +65,9 @@ def generate_candidate_buttons():
     except ValueError:
         messagebox.showerror("오류", "올바른 숫자를 입력해주세요!")
         return
+
+    # 현재 입력값 저장
+    last_input_values = (nums, cols, entry3.get().strip())
 
     # 전체 자리 수 계산
     total_seats = nums
@@ -109,9 +114,8 @@ def select_seat(i, j):
             i1, j1 = first_selected_seat
             # 첫 번째 선택된 자리의 텍스트와 배경색 저장
             temp_text = seat_buttons[i1][j1]['text']
-            temp_bg = seat_buttons[i1][j1]['bg']
             
-            # 두 자리의 텍스트와 배경색 교환
+            # 두 자리의 텍스트 교환
             seat_buttons[i1][j1].config(text=seat_buttons[i][j]['text'], bg='lightblue')
             seat_buttons[i][j].config(text=temp_text, bg='lightblue')
             
@@ -119,11 +123,16 @@ def select_seat(i, j):
             first_selected_seat = None
 
 def generate_seats():
-    global seat_buttons, selected, is_seat_creation_phase, first_selected_seat
+    global seat_buttons, selected, first_selected_seat
+    
+    # 자리 버튼이 없는 경우에만 에러 메시지 출력
+    if not seat_buttons:
+        messagebox.showerror("오류", "먼저 '자리 생성' 버튼을 눌러주세요!")
+        return
+        
     for widget in frame.winfo_children():
         widget.destroy()
     seat_buttons = []
-    is_seat_creation_phase = False  # 자리 생성 단계 종료
     first_selected_seat = None  # 첫 번째 선택된 자리 초기화
 
     try:
@@ -219,6 +228,7 @@ btn_generate_seats = Button(input_frame, text='자리 배치',
                           font=('맑은 고딕', 12, 'bold'), bg='#ffffff', fg='black',
                           relief='raised', bd=2)
 btn_generate_seats.grid(row=1, column=2, padx=10, pady=10)
+
 
 # 자리 배치 프레임
 frame = Frame(tk, bg='white')
