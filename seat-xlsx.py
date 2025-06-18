@@ -11,7 +11,13 @@ from openpyxl.styles import Font
 from openpyxl.styles import Alignment
 
 # 학생 수 입력
+print("#"*30)
+print("#"*5+" 자리 뽑기 프로그램 "+"#"*5)
+print("#"*30)
+grade = int(input("학년을 입력해주세요 : "))
+group = int(input("몇 반입니까? : "))
 n = int(input("학생 수를 입력해주세요 : "))
+teacher = input("담임선생님 성함을 입력해주세요 : ")
 
 # 폰트 종류
 # name-폰트 이름 / size-폰트 크기 / bold-굵기 / italic-기울기 / underline-밑줄
@@ -139,10 +145,10 @@ for merge_range, row, col in seat_positions:
         current_seat += 1
 
 # 추가 데이터 입력
-x1['B22'] = "1-3"
+x1['B22'] = f'{grade}-{group}'
 x1['B22'].font = Pretendard
 
-x1['B23'] = "강진아"
+x1['B23'] = teacher
 x1['B23'].font = Pretendard
 
 
