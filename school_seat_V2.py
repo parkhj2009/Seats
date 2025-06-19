@@ -4,6 +4,7 @@ import random as r
 from tkinter import messagebox, filedialog
 from openpyxl import Workbook
 from openpyxl.styles import Border, Side, Font, Alignment
+from openpyxl.utils import range_boundaries
 import os
 
 # 전역 변수
@@ -62,6 +63,9 @@ def generate_candidate_buttons():
         nums = int(entry_students.get())
         if nums <= 0:
             messagebox.showerror("오류", "올바른 학생 수를 입력해주세요!")
+            return
+        if nums > 20:
+            messagebox.showerror("오류", "학생 수는 20명 이하로만 입력 가능합니다!")
             return
     except ValueError:
         messagebox.showerror("오류", "올바른 학생 수를 입력해주세요!")
@@ -334,36 +338,20 @@ def create_excel_file():
         ('B5:C7', 5, 2)       # 20
     ]
 
-    # GUI의 현재 상태를 정확히 읽어서 엑셀에 반영
-    seat_number = 1
-    for merge_range, row, col in seat_positions:
-        if seat_number <= n:
-            # GUI에서 해당 위치의 실제 학생 번호 찾기
-            student_number = None
-            if seat_buttons and len(seat_buttons) > 0:
-                # seat_number를 GUI 좌표로 변환 (1부터 시작하므로 -1)
-                gui_row = (seat_number - 1) // 4
-                gui_col = (seat_number - 1) % 4
-                
-                # GUI 범위 체크
-                if gui_row < len(seat_buttons) and gui_col < len(seat_buttons[0]):
-                    button = seat_buttons[gui_row][gui_col]
-                    button_text = button['text']
-                    
-                    # X가 아니고 텍스트가 있으면 학생 번호로 사용
-                    if button_text and button_text != 'X':
-                        student_number = button_text
-            
-            # 학생 번호가 있으면 병합하고 테두리 적용
-            if student_number:
-                x1.merge_cells(merge_range)
-                x1.cell(row=row, column=col).value = student_number
-                
-                for row in x1[merge_range]:
-                    for cell in row:
-                        cell.border = Thin_border
-            # 제외한 자리는 아무것도 하지 않음 (빈 칸으로 유지)
-            seat_number += 1
+    # 학생 리스트 준비 (제외 번호 제외)
+    # students = [str(i) for i in range(1, n + 1) if i not in excluded]
+    # student_idx = 0
+    for idx, (merge_range, row, col) in enumerate(seat_positions):
+        gui_row = idx // 4
+        gui_col = idx % 4
+        if seat_buttons and seat_buttons[gui_row][gui_col]['text'] == 'X':
+            continue
+        button_text = seat_buttons[gui_row][gui_col]['text']
+        if button_text and button_text != 'X':
+            x1.merge_cells(merge_range)
+            x1.cell(row=row, column=col).value = button_text
+            set_border_to_merged_range(x1, merge_range, Thin_border)
+        # 학생이 없으면 빈 칸(아무것도 안함)
 
     # 추가 데이터 입력
     x1['B22'] = f'{grade}-{group}'
@@ -378,6 +366,46 @@ def create_excel_file():
         messagebox.showinfo("성공", f"엑셀 파일이 성공적으로 저장되었습니다!\n저장 위치: {file_path}")
     except Exception as e:
         messagebox.showerror("오류", f"파일 저장 중 오류가 발생했습니다: {str(e)}")
+
+def can_assign_seats():
+    try:
+        nums = int(entry_students.get())
+        if nums <= 0:
+            messagebox.showerror("오류", "올바른 학생 수를 입력해주세요!")
+            generate_candidate_buttons()
+            return False
+    except ValueError:
+        messagebox.showerror("오류", "올바른 학생 수를 입력해주세요!")
+        generate_candidate_buttons()
+        return False
+
+    if not add_excluded_numbers():
+        generate_candidate_buttons()
+        return False
+
+    total_seats = 20
+    active_seats = total_seats - len(selected)
+    available_students = [i for i in range(1, nums + 1) if i not in excluded]
+    if active_seats != len(available_students):
+        messagebox.showerror("오류", "활성화된 자리 수와 배정할 학생 수가 일치하지 않습니다!")
+        generate_candidate_buttons()
+        return False
+    return True
+
+def start_countdown_and_generate_seats():
+    if not can_assign_seats():
+        return
+    set_inputs_state('disabled')
+    countdown_label.config(text='3')
+    root.after(700, lambda: countdown_label.config(text='2'))
+    root.after(1400, lambda: countdown_label.config(text='1'))
+    root.after(2100, lambda: [countdown_label.config(text=''), generate_seats(), set_inputs_state('normal')])
+
+def set_border_to_merged_range(ws, merge_range, border):
+    min_col, min_row, max_col, max_row = range_boundaries(merge_range)
+    for row in ws.iter_rows(min_row=min_row, max_row=max_row, min_col=min_col, max_col=max_col):
+        for cell in row:
+            cell.border = border
 
 # 메인 윈도우 생성
 root = Tk()
@@ -426,7 +454,7 @@ btn_generate_candidates = Button(btn_frame, text='자리 생성',
 btn_generate_candidates.grid(row=0, column=0, padx=5, pady=5)
 
 btn_generate_seats = Button(btn_frame, text='자리 배치', 
-                          command=generate_seats,
+                          command=start_countdown_and_generate_seats,
                           font=('맑은 고딕', 11, 'bold'), bg='#2196F3', fg='#000000',
                           relief='raised', bd=2, width=10)
 btn_generate_seats.grid(row=0, column=1, padx=5, pady=5)
@@ -436,6 +464,16 @@ btn_create_excel = Button(btn_frame, text='엑셀 생성',
                          font=('맑은 고딕', 11, 'bold'), bg='#FF9800', fg='#000000',
                          relief='raised', bd=2, width=10)
 btn_create_excel.grid(row=0, column=2, padx=5, pady=5)
+
+# 입력 필드와 버튼을 리스트로 관리
+all_inputs = [
+    entry_grade, entry_group, entry_students, entry_teacher, entry_exclude,
+    btn_generate_candidates, btn_generate_seats, btn_create_excel
+]
+
+def set_inputs_state(state):
+    for widget in all_inputs:
+        widget.config(state=state)
 
 # 설명 라벨
 info_label = Label(input_frame, text="사용법: 1. 정보 입력 → 2. 자리 생성 → 3. X로 비활성화할 자리 선택 → 4. 자리 배치 → 5. 엑셀 생성\n인쇄 방법 : 파일 -> 인쇄 -> A4/인쇄(활성 시트)/여백(넓은 여백)/방향(가로))", 
@@ -452,4 +490,8 @@ blackboard_label.grid(row=4, column=0, columnspan=4, pady=5)
 frame = Frame(root, bg='white')
 frame.grid(row=1, column=0, columnspan=3, padx=20, pady=20)
 
-root.mainloop() 
+# 카운트다운 라벨 추가
+countdown_label = Label(root, text='', font=('맑은 고딕', 40, 'bold'), bg='white', fg='red')
+countdown_label.grid(row=2, column=0, columnspan=3, pady=10)
+
+root.mainloop()
