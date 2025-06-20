@@ -439,7 +439,7 @@ label_group.grid(row=0, column=2, padx=10, pady=5, sticky='e')
 entry_group = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg='white', fg='black')
 entry_group.grid(row=0, column=3, padx=10, pady=5)
 
-label_students = Label(input_frame, text='학생 수', bg='white', fg='black', font=('맑은 고딕', 12, 'bold'))
+label_students = Label(input_frame, text='학생 수\n(1~20)', bg='white', fg='black', font=('맑은 고딕', 12, 'bold'))
 label_students.grid(row=1, column=0, padx=10, pady=5, sticky='e')
 entry_students = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg='white', fg='black')
 entry_students.grid(row=1, column=1, padx=10, pady=5)
@@ -487,7 +487,7 @@ def set_inputs_state(state):
         widget.config(state=state)
 
 # 설명 라벨
-info_label = Label(input_frame, text="사용법: 1. 정보 입력 → 2. 자리 생성 → 3. X로 비활성화할 자리 선택 → 4. 자리 배치 → 5. 엑셀 생성\n인쇄 방법 : 파일 -> 인쇄 -> A4/인쇄(활성 시트)/여백(넓은 여백)/방향(가로))", 
+info_label = Label(input_frame, text="사용법: 1. 정보 입력 → 2. 자리 생성 → 3. 비활성화할 자리 선택 → 4. 자리 배치 → 5. 엑셀 생성", 
                   bg='white', fg='#666666', font=('맑은 고딕', 20))
 info_label.grid(row=3, column=0, columnspan=4, pady=10)
 
