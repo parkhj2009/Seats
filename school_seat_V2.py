@@ -237,6 +237,17 @@ def create_excel_file():
     xlsx = Workbook()
     x1 = xlsx.active
 
+    # === 인쇄 설정 추가 ===
+    x1.page_setup.paperSize = x1.PAPERSIZE_A4
+    x1.page_setup.orientation = 'landscape'
+    x1.page_margins.left = 1.0
+    x1.page_margins.right = 1.0
+    x1.page_margins.top = 1.0
+    x1.page_margins.bottom = 1.0
+    x1.page_margins.header = 0.5
+    x1.page_margins.footer = 0.5
+    # =====================
+
     # 폰트 스타일 정의
     Title_font = Font(name='Pretendard', size=24, bold=True)
     Pretendard = Font(name='Pretendard', size=12, bold=True)
@@ -477,7 +488,7 @@ def set_inputs_state(state):
 
 # 설명 라벨
 info_label = Label(input_frame, text="사용법: 1. 정보 입력 → 2. 자리 생성 → 3. X로 비활성화할 자리 선택 → 4. 자리 배치 → 5. 엑셀 생성\n인쇄 방법 : 파일 -> 인쇄 -> A4/인쇄(활성 시트)/여백(넓은 여백)/방향(가로))", 
-                  bg='white', fg='#666666', font=('맑은 고딕', 10))
+                  bg='white', fg='#666666', font=('맑은 고딕', 20))
 info_label.grid(row=3, column=0, columnspan=4, pady=10)
 
 # 칠판 위치 표시 라벨
