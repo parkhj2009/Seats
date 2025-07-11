@@ -1,3 +1,4 @@
+# 2024년도에 만든 교실 자리 뽑기 프로그램 V1
 import random
 import time
 
