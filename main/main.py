@@ -72,10 +72,10 @@ def generate_candidate_buttons():
         messagebox.showerror("오류", "올바른 학생 수를 입력해주세요!")
         return
 
-    # 20개 자리로 고정 (기존 코드와 동일)
-    total_seats = 20
-    cols = 4  # 4열로 고정
-    rows = 5  # 5행으로 고정
+    # 18개 자리로 고정 (기존 코드와 동일)
+    total_seats = 18
+    cols = 6  # 6열로 고정
+    rows = 3  # 3행으로 고정
 
     # 모든 자리를 생성 (번호 없이)
     for i in range(rows):
@@ -153,10 +153,10 @@ def generate_seats():
     if not add_excluded_numbers():
         return
 
-    # 20개 자리로 고정 (기존 코드와 동일)
-    total_seats = 20
-    cols = 4  # 4열로 고정
-    rows = 5  # 5행으로 고정
+    # 18개 자리로 고정 (기존 코드와 동일)
+    total_seats = 18
+    cols = 6  # 6열로 고정
+    rows = 3  # 3행으로 고정
 
     # 제외된 학생을 제외한 학생 리스트 생성
     available_students = [i for i in range(1, nums + 1) if i not in excluded]
@@ -395,7 +395,7 @@ def can_assign_seats():
         generate_candidate_buttons()
         return False
 
-    total_seats = 20
+    total_seats = 18
     active_seats = total_seats - len(selected)
     available_students = [i for i in range(1, nums + 1) if i not in excluded]
     if active_seats != len(available_students):
@@ -440,7 +440,7 @@ label_group.grid(row=0, column=2, padx=10, pady=5, sticky='e')
 entry_group = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg='white', fg='black')
 entry_group.grid(row=0, column=3, padx=10, pady=5)
 
-label_students = Label(input_frame, text='학생 수\n(1~20)', bg='white', fg='black', font=('맑은 고딕', 12, 'bold'))
+label_students = Label(input_frame, text='학생 수\n(1~18)', bg='white', fg='black', font=('맑은 고딕', 12, 'bold'))
 label_students.grid(row=1, column=0, padx=10, pady=5, sticky='e')
 entry_students = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg='white', fg='black')
 entry_students.grid(row=1, column=1, padx=10, pady=5)
