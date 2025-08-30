@@ -57,8 +57,8 @@ def generate_candidate_buttons():
     for widget in frame.winfo_children():
         widget.destroy()
     seat_buttons = []
-    selected = set()  # 비활성화된 자리 초기화
-    is_seat_creation_phase = True  # 자리 생성 단계 시작
+    selected = set()
+    is_seat_creation_phase = True
 
     try:
         nums = int(entry_students.get())
@@ -72,24 +72,30 @@ def generate_candidate_buttons():
         messagebox.showerror("오류", "올바른 학생 수를 입력해주세요!")
         return
 
-    # 18개 자리로 고정 (기존 코드와 동일)
     total_seats = 18
-    cols = 6  # 6열로 고정
-    rows = 3  # 3행으로 고정
+    cols = 6
+    rows = 3
 
-    # 모든 자리를 생성 (번호 없이)
     for i in range(rows):
         row_buttons = []
         for j in range(cols):
             idx = i * cols + j + 1
             if idx > total_seats:
                 break
-            
+
             btn = Button(frame, text='', width=8, height=3, font=('맑은 고딕', 12),
                          bg='lightblue', fg='black', command=lambda i=i, j=j: select_seat(i, j))
-            btn.grid(row=i, column=j, padx=5, pady=5)
+
+            # 그룹 간 간격 조정 (2개씩 붙이고 그룹 사이 넓게)
+            if j % 2 == 0:
+                padx_val = (0, 2)  # 왼쪽 끝이면 오른쪽 약간 간격
+            else:
+                padx_val = (0, 10)  # 짝꿍 오른쪽 끝이면 그룹 사이 간격 넓게
+
+            btn.grid(row=i, column=j, padx=padx_val, pady=5)
             row_buttons.append(btn)
         seat_buttons.append(row_buttons)
+
 
 def select_seat(i, j):
     global selected, first_selected_seat
@@ -192,7 +198,12 @@ def generate_seats():
                 btn = Button(frame, text='', width=8, height=3, font=('맑은 고딕', 12),
                              bg='lightgray', fg='black', state='disabled')
 
-            btn.grid(row=i, column=j, padx=5, pady=5)
+            if j % 2 == 0:
+                padx_val = (0, 0)  # 짝꿍 왼쪽
+            else:
+                padx_val = (0, 10)  # 짝꿍 오른쪽, 그룹 간격 넓게
+            btn.grid(row=i, column=j, padx=padx_val, pady=5)
+
             row_buttons.append(btn)
         seat_buttons.append(row_buttons)
 
@@ -328,34 +339,20 @@ def create_excel_file():
 
     # 자리표 배치 좌표 (기존 코드와 동일)
     seat_positions = [
-        ('K17:L19', 17, 11),  # 1
-        ('H17:I19', 17, 8),   # 2
-        ('E17:F19', 17, 5),   # 3
-        ('B17:C19', 17, 2),   # 4
-        ('K14:L16', 14, 11),  # 5
-        ('H14:I16', 14, 8),   # 6
-        ('E14:F16', 14, 5),   # 7
-        ('B14:C16', 14, 2),   # 8
-        ('K11:L13', 11, 11),  # 9
-        ('H11:I13', 11, 8),   # 10
-        ('E11:F13', 11, 5),   # 11
-        ('B11:C13', 11, 2),   # 12
-        ('K8:L10', 8, 11),    # 13
-        ('H8:I10', 8, 8),     # 14
-        ('E8:F10', 8, 5),     # 15
-        ('B8:C10', 8, 2),     # 16
-        ('K5:L7', 5, 11),     # 17
-        ('H5:I7', 5, 8),      # 18
-        ('E5:F7', 5, 5),      # 19
-        ('B5:C7', 5, 2)       # 20
+        ('B17:C19', 17, 2),  ('E17:F19', 17, 5),  ('H17:I19', 17, 8),
+        ('K17:L19', 17, 11), ('N17:O19', 17, 14), ('Q17:R19', 17, 17),
+        ('B14:C16', 14, 2),  ('E14:F16', 14, 5),  ('H14:I16', 14, 8),
+        ('K14:L16', 14, 11), ('N14:O16', 14, 14), ('Q14:R16', 14, 17),
+        ('B11:C13', 11, 2),  ('E11:F13', 11, 5),  ('H11:I13', 11, 8),
+        ('G15:G16', 11, 11), ('I15:I16', 11, 14), ('J15:J16', 11, 17)
     ]
 
     # 학생 리스트 준비 (제외 번호 제외)
     # students = [str(i) for i in range(1, n + 1) if i not in excluded]
     # student_idx = 0
     for idx, (merge_range, row, col) in enumerate(seat_positions):
-        gui_row = idx // 4
-        gui_col = idx % 4
+        gui_row = idx // 6
+        gui_col = idx % 6
         if seat_buttons and seat_buttons[gui_row][gui_col]['text'] == 'X':
             continue
         button_text = seat_buttons[gui_row][gui_col]['text']
