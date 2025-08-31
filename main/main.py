@@ -545,6 +545,13 @@ def start_countdown_and_generate_seats():
     if not can_assign_seats():
         return
     set_inputs_state('disabled')
+    
+    # 카운트다운 시작 시 기존 책상 버튼들을 비활성화
+    for row_buttons in seat_buttons:
+        for btn in row_buttons:
+            if btn.winfo_exists():
+                btn.config(state='disabled')
+    
     countdown_label.config(text='3')
     root.after(700, lambda: countdown_label.config(text='2'))
     root.after(1400, lambda: countdown_label.config(text='1'))
