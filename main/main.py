@@ -16,6 +16,7 @@ is_seat_creation_phase = False  # 자리 생성 단계인지 여부
 first_selected_seat = None  # 첫 번째 선택된 자리
 current_seat_assignment = {}  # 현재 자리 배정 상태
 current_scale = 1.0  # 현재 UI 크기 배율
+update_window = None  # 업데이트 내용 편집 창
 
 def zoom_in(event=None):
     """UI 확대 (Command + '+' 또는 Command + '=')"""
@@ -204,33 +205,10 @@ def select_seat(i, j):
         else:
             selected.add(idx)
             seat_buttons[i][j].config(bg='lightgray', text='X', fg='black')
-    # 자리 배치 단계에서는 자리 교환
+    # 자리 배치 단계에서는 아무 동작도 하지 않음 (자리 교환 불가)
     else:
-        # 비활성화된 자리(X)는 선택할 수 없음
-        if seat_buttons[i][j]['text'] == 'X':
-            return
-            
-        if first_selected_seat is None:
-            first_selected_seat = (i, j)
-            seat_buttons[i][j].config(bg='yellow')
-        else:
-            # 두 번째 자리 선택 시 교환
-            i1, j1 = first_selected_seat
-            # 첫 번째 선택된 자리의 텍스트와 배경색 저장
-            temp_text = seat_buttons[i1][j1]['text']
-            temp_bg = seat_buttons[i1][j1]['bg']
-            
-            # 두 자리의 텍스트와 배경색 교환
-            seat_buttons[i1][j1].config(text=seat_buttons[i][j]['text'], bg='lightblue')
-            seat_buttons[i][j].config(text=temp_text, bg='lightblue')
-            
-            # 자리 배정 상태 업데이트
-            if temp_text and seat_buttons[i][j]['text']:
-                current_seat_assignment[temp_text] = (i, j)
-                current_seat_assignment[seat_buttons[i][j]['text']] = (i1, j1)
-            
-            # 첫 번째 선택 초기화
-            first_selected_seat = None
+        # 자리 배치 완료 후에는 자리 교환이 불가능함
+        pass
 
 def generate_seats():
     global seat_buttons, selected, is_seat_creation_phase, first_selected_seat, current_seat_assignment
@@ -545,13 +523,6 @@ def start_countdown_and_generate_seats():
     if not can_assign_seats():
         return
     set_inputs_state('disabled')
-    
-    # 카운트다운 시작 시 기존 책상 버튼들을 비활성화
-    for row_buttons in seat_buttons:
-        for btn in row_buttons:
-            if btn.winfo_exists():
-                btn.config(state='disabled')
-    
     countdown_label.config(text='3')
     root.after(700, lambda: countdown_label.config(text='2'))
     root.after(1400, lambda: countdown_label.config(text='1'))
@@ -562,6 +533,108 @@ def set_border_to_merged_range(ws, merge_range, border):
     for row in ws.iter_rows(min_row=min_row, max_row=max_row, min_col=min_col, max_col=max_col):
         for cell in row:
             cell.border = border
+
+def open_update_editor():
+    """업데이트 내용 보기 창을 엽니다"""
+    global update_window
+    
+    # 이미 열려있다면 포커스만 이동
+    if update_window and update_window.winfo_exists():
+        update_window.lift()
+        update_window.focus_force()
+        return
+    
+    # 새 창 생성
+    update_window = Toplevel(root)
+    update_window.title("업데이트 내용")
+    update_window.geometry("600x600")
+    update_window.config(bg='white')
+    update_window.resizable(True, True)
+    
+    # 창이 닫힐 때 전역 변수 정리
+    def on_closing():
+        global update_window
+        try:
+            update_window.destroy()
+        except:
+            pass
+        update_window = None
+    
+    update_window.protocol("WM_DELETE_WINDOW", on_closing)
+    
+    # 메인 프레임
+    main_frame = Frame(update_window, bg='white')
+    main_frame.pack(expand=True, fill='both', padx=20, pady=20)
+    
+    # 제목
+    title_label = Label(main_frame, text="업데이트 내용", 
+                       font=('맑은 고딕', 16, 'bold'), bg='white', fg='black')
+    title_label.pack(pady=(0, 20))
+    
+    # 설명
+    info_label = Label(main_frame, text="프로그램의 업데이트 내용을 확인할 수 있습니다.", 
+                       font=('맑은 고딕', 10), bg='white', fg='#666666')
+    info_label.pack(pady=(0, 10))
+    
+    # 텍스트 보기 영역
+    text_frame = Frame(main_frame, bg='white')
+    text_frame.pack(expand=True, fill='both', pady=(0, 20))
+    
+    # 스크롤바가 있는 텍스트 위젯 (읽기 전용)
+    text_widget = Text(text_frame, wrap='word', font=('맑은 고딕', 11), 
+                      bg='#f5f5f5', fg='black', relief='solid', bd=1, state='disabled')
+    scrollbar = Scrollbar(text_frame, orient='vertical', command=text_widget.yview)
+    text_widget.configure(yscrollcommand=scrollbar.set)
+    
+    text_widget.pack(side='left', expand=True, fill='both')
+    scrollbar.pack(side='right', fill='y')
+    
+    # 기존 업데이트 내용 로드
+    try:
+        with open('main/update_log.txt', 'r', encoding='utf-8') as f:
+            content = f.read()
+            text_widget.config(state='normal')
+            text_widget.insert('1.0', content)
+            text_widget.config(state='disabled')
+    except FileNotFoundError:
+        text_widget.config(state='normal')
+        text_widget.insert('1.0', "업데이트 내용을 불러올 수 없습니다.")
+        text_widget.config(state='disabled')
+    
+    # 버튼 프레임
+    button_frame = Frame(main_frame, bg='white')
+    button_frame.pack(pady=(0, 10))
+    
+    # 닫기 버튼
+    close_btn = Button(button_frame, text='닫기', 
+                      command=on_closing,
+                      font=('맑은 고딕', 11, 'bold'), bg='#FF9800', fg='#000000',
+                      relief='raised', bd=2, width=10)
+    close_btn.pack()
+
+def save_update_content(content):
+    """업데이트 내용을 파일에 저장합니다"""
+    try:
+        with open('main/update_log.txt', 'w', encoding='utf-8') as f:
+            f.write(content)
+        messagebox.showinfo("성공", "업데이트 내용이 저장되었습니다!")
+    except Exception as e:
+        messagebox.showerror("오류", f"저장 중 오류가 발생했습니다: {str(e)}")
+
+def load_update_content(text_widget):
+    """파일에서 업데이트 내용을 다시 로드합니다"""
+    try:
+        with open('main/update_log.txt', 'r', encoding='utf-8') as f:
+            content = f.read()
+            text_widget.config(state='normal')
+            text_widget.delete('1.0', 'end')
+            text_widget.insert('1.0', content)
+            text_widget.config(state='disabled')
+        messagebox.showinfo("성공", "업데이트 내용을 새로고침했습니다!")
+    except FileNotFoundError:
+        messagebox.showerror("오류", "업데이트 로그 파일을 찾을 수 없습니다.")
+    except Exception as e:
+        messagebox.showerror("오류", f"로드 중 오류가 발생했습니다: {str(e)}")
 
 # 메인 윈도우 생성
 root = Tk()
@@ -654,6 +727,16 @@ frame.pack(pady=20)
 countdown_label = Label(main_container, text='', font=('맑은 고딕', 40, 'bold'), bg='white', fg='red')
 countdown_label.pack(pady=10)
 
+# 왼쪽 하단에 업데이트 내용 버튼 배치
+update_button_frame = Frame(main_container, bg='white')
+update_button_frame.pack(side='bottom', anchor='sw', padx=10, pady=5)
+
+update_content_btn = Button(update_button_frame, text='업데이트 내용', 
+                           command=open_update_editor,
+                           font=('맑은 고딕', 11, 'bold'), bg='#4CAF50', fg='#000000',
+                           relief='raised', bd=2, width=10)
+update_content_btn.pack()
+
 # 확대/축소 상태 표시 라벨
 zoom_status_label = Label(main_container, text="확대/축소: 100%", font=('맑은 고딕', 10), bg='white', fg='black')
 zoom_status_label.pack(side='bottom', anchor='se', padx=10, pady=5)
@@ -661,7 +744,7 @@ zoom_status_label.pack(side='bottom', anchor='se', padx=10, pady=5)
 # 단축키 안내 라벨
 shortcut_label = Label(main_container, text="단축키: ⌘+ 또는 ⌘= (확대) | ⌘- (축소) | ⌘0 (원래 크기)", 
                       font=('맑은 고딕', 9), bg='white', fg='#666666')
-shortcut_label.pack(side='bottom', anchor='se', padx=10, pady=(0, 5))
+shortcut_label.pack(side='bottom', anchor='se', padx=10, pady=5)
 
 # 키보드 단축키 바인딩 (macOS 호환성 향상)
 root.bind('<Command-plus>', zoom_in)
