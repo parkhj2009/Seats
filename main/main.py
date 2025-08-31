@@ -20,7 +20,7 @@ current_scale = 1.0  # 현재 UI 크기 배율
 def zoom_in(event=None):
     """UI 확대 (Command + '+' 또는 Command + '=')"""
     global current_scale
-    if current_scale < 2.0:  # 최대 2배까지만 확대
+    if current_scale < 1.8:  # 최대 1.8배까지만 확대 (180%)
         current_scale += 0.1
         print(f"확대: {current_scale:.1f} ({int(current_scale * 100)}%)")  # 디버깅용
         apply_zoom()
@@ -28,7 +28,7 @@ def zoom_in(event=None):
 def zoom_out(event=None):
     """UI 축소 (Command + '-')"""
     global current_scale
-    if current_scale > 0.5:  # 최소 0.5배까지만 축소
+    if current_scale > 1.0:  # 최소 1.0배까지만 축소 (100%)
         current_scale -= 0.1
         print(f"축소: {current_scale:.1f} ({int(current_scale * 100)}%)")  # 디버깅용
         apply_zoom()
