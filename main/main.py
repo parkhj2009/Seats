@@ -1,4 +1,5 @@
 # 2025년도에 만든 교실 자리 뽑기 프로그램 V2
+# 2025.09.01 - V2.5.0
 import tkinter as tk
 from tkinter import *
 import random as r
