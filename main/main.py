@@ -178,7 +178,7 @@ def generate_candidate_buttons():
             if idx > total_seats:
                 break
 
-            btn = Button(frame, text='', width=8, height=3, font=('맑은 고딕', 12),
+            btn = Button(frame, text='', width=8, height=3, font=('맑은 고딕', int(12 * current_scale)),
                          bg='lightblue', fg='black', command=lambda i=i, j=j: select_seat(i, j))
 
             # 그룹 간 간격 조정 (2개씩 붙이고 그룹 사이 넓게)
@@ -280,17 +280,17 @@ def generate_seats():
             
             # 현재 자리가 비활성화된 자리인 경우
             if idx in selected:
-                btn = Button(frame, text='X', width=8, height=3, font=('맑은 고딕', 12),
+                btn = Button(frame, text='X', width=8, height=3, font=('맑은 고딕', int(12 * current_scale)),
                              bg='lightgray', fg='black', state='disabled')
             # 현재 자리에 배정할 학생이 있는 경우
             elif student_idx < len(available_students):
                 student = available_students[student_idx]
                 student_idx += 1
-                btn = Button(frame, text=str(student), width=8, height=3, font=('맑은 고딕', 12),
+                btn = Button(frame, text=str(student), width=8, height=3, font=('맑은 고딕', int(12 * current_scale)),
                              bg='lightblue', fg='black', command=lambda i=i, j=j: select_seat(i, j))
                 current_seat_assignment[str(student)] = (i, j)
             else:
-                btn = Button(frame, text='', width=8, height=3, font=('맑은 고딕', 12),
+                btn = Button(frame, text='', width=8, height=3, font=('맑은 고딕', int(12 * current_scale)),
                              bg='lightgray', fg='black', state='disabled')
             
             # 그룹 간 간격 조정 (2개씩 붙이고 그룹 사이 넓게)
