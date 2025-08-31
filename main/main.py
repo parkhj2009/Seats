@@ -15,6 +15,101 @@ seat_buttons = []  # 자리 버튼들
 is_seat_creation_phase = False  # 자리 생성 단계인지 여부
 first_selected_seat = None  # 첫 번째 선택된 자리
 current_seat_assignment = {}  # 현재 자리 배정 상태
+current_scale = 1.0  # 현재 UI 크기 배율
+
+def zoom_in(event=None):
+    """UI 확대 (Command + '+' 또는 Command + '=')"""
+    global current_scale
+    if current_scale < 2.0:  # 최대 2배까지만 확대
+        current_scale += 0.1
+        print(f"확대: {current_scale:.1f} ({int(current_scale * 100)}%)")  # 디버깅용
+        apply_zoom()
+
+def zoom_out(event=None):
+    """UI 축소 (Command + '-')"""
+    global current_scale
+    if current_scale > 0.5:  # 최소 0.5배까지만 축소
+        current_scale -= 0.1
+        print(f"축소: {current_scale:.1f} ({int(current_scale * 100)}%)")  # 디버깅용
+        apply_zoom()
+
+def zoom_reset(event=None):
+    """UI 원래 크기로 복원 (Command + '0')"""
+    global current_scale
+    current_scale = 1.0
+    print(f"원래 크기: {current_scale:.1f} ({int(current_scale * 100)}%)")  # 디버깅용
+    apply_zoom()
+
+def apply_zoom():
+    """현재 배율을 모든 UI 요소에 적용"""
+    try:
+        # 폰트 크기 조정
+        base_font_size = 12
+        base_title_font_size = 20
+        base_countdown_font_size = 40
+        
+        # 입력 필드 폰트 크기 조정
+        new_font_size = int(base_font_size * current_scale)
+        new_title_font_size = int(base_title_font_size * current_scale)
+        new_countdown_font_size = int(base_countdown_font_size * current_scale)
+        
+        # 라벨 폰트 크기 조정 (존재하는 경우에만)
+        if 'label_grade' in globals() and label_grade.winfo_exists():
+            label_grade.config(font=('맑은 고딕', new_font_size, 'bold'))
+        if 'label_group' in globals() and label_group.winfo_exists():
+            label_group.config(font=('맑은 고딕', new_font_size, 'bold'))
+        if 'label_students' in globals() and label_students.winfo_exists():
+            label_students.config(font=('맑은 고딕', new_font_size, 'bold'))
+        if 'label_teacher' in globals() and label_teacher.winfo_exists():
+            label_teacher.config(font=('맑은 고딕', new_font_size, 'bold'))
+        if 'label_exclude' in globals() and label_exclude.winfo_exists():
+            label_exclude.config(font=('맑은 고딕', new_font_size, 'bold'))
+        
+        # 입력 필드 폰트 크기 조정 (존재하는 경우에만)
+        if 'entry_grade' in globals() and entry_grade.winfo_exists():
+            entry_grade.config(font=('맑은 고딕', new_font_size))
+        if 'entry_group' in globals() and entry_group.winfo_exists():
+            entry_group.config(font=('맑은 고딕', new_font_size))
+        if 'entry_students' in globals() and entry_students.winfo_exists():
+            entry_students.config(font=('맑은 고딕', new_font_size))
+        if 'entry_teacher' in globals() and entry_teacher.winfo_exists():
+            entry_teacher.config(font=('맑은 고딕', new_font_size))
+        if 'entry_exclude' in globals() and entry_exclude.winfo_exists():
+            entry_exclude.config(font=('맑은 고딕', new_font_size))
+        
+        # 버튼 폰트 크기 조정 (존재하는 경우에만)
+        if 'btn_generate_candidates' in globals() and btn_generate_candidates.winfo_exists():
+            btn_generate_candidates.config(font=('맑은 고딕', int(11 * current_scale), 'bold'))
+        if 'btn_generate_seats' in globals() and btn_generate_seats.winfo_exists():
+            btn_generate_seats.config(font=('맑은 고딕', int(11 * current_scale), 'bold'))
+        if 'btn_create_excel' in globals() and btn_create_excel.winfo_exists():
+            btn_create_excel.config(font=('맑은 고딕', int(11 * current_scale), 'bold'))
+        
+        # 설명 라벨 폰트 크기 조정 (존재하는 경우에만)
+        if 'info_label' in globals() and info_label.winfo_exists():
+            info_label.config(font=('맑은 고딕', new_title_font_size))
+        
+        # 칠판 라벨 폰트 크기 조정 (존재하는 경우에만)
+        if 'blackboard_label' in globals() and blackboard_label.winfo_exists():
+            blackboard_label.config(font=('맑은 고딕', int(11 * current_scale), 'bold'))
+        
+        # 카운트다운 라벨 폰트 크기 조정 (존재하는 경우에만)
+        if 'countdown_label' in globals() and countdown_label.winfo_exists():
+            countdown_label.config(font=('맑은 고딕', new_countdown_font_size, 'bold'))
+        
+        # 자리 버튼들 폰트 크기 조정 (이미 생성된 경우)
+        for row_buttons in seat_buttons:
+            for btn in row_buttons:
+                if btn.winfo_exists():
+                    btn.config(font=('맑은 고딕', int(12 * current_scale)))
+        
+        # 상태 표시 업데이트
+        if 'zoom_status_label' in globals() and zoom_status_label.winfo_exists():
+            zoom_status_label.config(text=f"확대/축소: {int(current_scale * 100)}%")
+            
+    except Exception as e:
+        print(f"확대/축소 적용 중 오류: {e}")
+        # 오류가 발생해도 프로그램이 중단되지 않도록 함
 
 def toggle_exclude(num, button):
     if num in excluded:
@@ -197,9 +292,10 @@ def generate_seats():
             else:
                 btn = Button(frame, text='', width=8, height=3, font=('맑은 고딕', 12),
                              bg='lightgray', fg='black', state='disabled')
-
+            
+            # 그룹 간 간격 조정 (2개씩 붙이고 그룹 사이 넓게)
             if j % 2 == 0:
-                padx_val = (0, 0)  # 짝꿍 왼쪽
+                padx_val = (0, 2)  # 짝꿍 왼쪽
             else:
                 padx_val = (0, 10)  # 짝꿍 오른쪽, 그룹 간격 넓게
             btn.grid(row=i, column=j, padx=padx_val, pady=5)
@@ -249,6 +345,10 @@ def create_excel_file():
     xlsx = Workbook()
     x1 = xlsx.active
 
+    # === 열 너비 조정 ===
+    x1.column_dimensions['E'].width = 12
+    x1.column_dimensions['H'].width = 12
+
     # === 인쇄 설정 추가 ===
     x1.page_setup.paperSize = x1.PAPERSIZE_A4
     x1.page_setup.orientation = 'landscape'
@@ -271,12 +371,24 @@ def create_excel_file():
         top=Side(style='thin'),
         bottom=Side(style='thin')
     )
+    thickleft_Thin_border = Border(
+        left=Side(style='thick'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    thickright_Thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thick'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
     Thick_border = Side(style='thick')
     No_border = Side(style=None)
 
     # 전체 범위 지정
     min_row, max_row = 1, 26  # 행
-    min_col, max_col = 1, 13  # 열
+    min_col, max_col = 1, 12  # 열
 
     # 각 셀에 대해 위치에 따라 테두리 적용
     for row in range(min_row, max_row + 1):
@@ -308,13 +420,15 @@ def create_excel_file():
             cell.alignment = Alignment(horizontal='center', vertical='center')
 
     # 기본 병합
-    x1.merge_cells('B2:L3')  # 좌석 배정표
+    x1.merge_cells('B2:K3')  # 좌석 배정표
     x1.merge_cells('B22:C22')  # 학반
     x1.merge_cells('B23:C24')  # 담임선생님
-    x1.merge_cells('E23:I24')  # 칠판
+    x1.merge_cells('E23:H24')  # 칠판
+    x1.merge_cells('A5:A19')  # 왼쪽 사물함
+    x1.merge_cells('L5:L19')  # 오른쪽 사물함
 
     # 기본 테두리
-    for row in x1['B2:L3']:  # 좌석 배치표(타이틀)
+    for row in x1['B2:K3']:  # 좌석 배치표(타이틀)
         for cell in row:
             cell.border = Thin_border
 
@@ -326,9 +440,17 @@ def create_excel_file():
         for cell in row:
             cell.border = Thin_border
 
-    for row in x1['E23:I24']:  # 칠판
+    for row in x1['E23:H24']:  # 칠판
         for cell in row:
             cell.border = Thin_border
+    
+    for row in x1['A5:A19']:  # 왼쪽 사물함
+        for cell in row:
+            cell.border = thickleft_Thin_border
+    
+    for row in x1['L5:L19']:  # 오른쪽 사물함
+        for cell in row:
+            cell.border = thickright_Thin_border
 
     # 기본 데이터 입력
     x1['B2'] = "좌석 배정표"
@@ -339,12 +461,24 @@ def create_excel_file():
 
     # 자리표 배치 좌표 (기존 코드와 동일)
     seat_positions = [
-        ('B17:C19', 17, 2),  ('E17:F19', 17, 5),  ('H17:I19', 17, 8),
-        ('K17:L19', 17, 11), ('N17:O19', 17, 14), ('Q17:R19', 17, 17),
-        ('B14:C16', 14, 2),  ('E14:F16', 14, 5),  ('H14:I16', 14, 8),
-        ('K14:L16', 14, 11), ('N14:O16', 14, 14), ('Q14:R16', 14, 17),
-        ('B11:C13', 11, 2),  ('E11:F13', 11, 5),  ('H11:I13', 11, 8),
-        ('G15:G16', 11, 11), ('I15:I16', 11, 14), ('J15:J16', 11, 17)
+        ('J15:J16', 15, 10),
+        ('I15:I16', 15, 9),
+        ('G15:G16', 15, 7),
+        ('F15:F16', 15, 6),
+        ('D15:D16', 15, 4),
+        ('C15:C16', 15, 3),
+        ('J11:J12', 11, 10),
+        ('I11:I12', 11, 9),
+        ('G11:G12', 11, 7),
+        ('F11:F12', 11, 6),
+        ('D11:D12', 11, 4),
+        ('C11:C12', 11, 3),
+        ('J7:J8', 7, 10),
+        ('I7:I8', 7, 9),
+        ('G7:G8', 7, 7),
+        ('F7:F8', 7, 6),
+        ('D7:D8', 7, 4),
+        ('C7:C8', 7, 3)
     ]
 
     # 학생 리스트 준비 (제외 번호 제외)
@@ -367,6 +501,12 @@ def create_excel_file():
     x1['B22'].font = Pretendard
 
     x1['B23'] = teacher
+    x1['B23'].font = Pretendard
+
+    x1['A5'] = "사물함"
+    x1['B23'].font = Pretendard
+    
+    x1['L5'] = "사물함"
     x1['B23'].font = Pretendard
 
     # 엑셀 파일 저장
@@ -419,12 +559,16 @@ def set_border_to_merged_range(ws, merge_range, border):
 # 메인 윈도우 생성
 root = Tk()
 root.title("교실 자리 배치 프로그램")
-root.geometry("1000x800")
+root.geometry("1000x800")  # 기본 크기 설정
 root.config(bg='white')
 
+# 전체화면에서 중앙 정렬을 위한 메인 컨테이너 프레임
+main_container = Frame(root, bg='white')
+main_container.pack(expand=True, fill='both', padx=20, pady=20)
+
 # 입력 프레임 생성
-input_frame = Frame(root, bg='white')
-input_frame.grid(row=0, column=0, columnspan=3, padx=20, pady=20, sticky='ew')
+input_frame = Frame(main_container, bg='white')
+input_frame.pack(pady=(0, 20))
 
 # 입력 필드들
 label_grade = Label(input_frame, text='학년', bg='white', fg='black', font=('맑은 고딕', 12, 'bold'))
@@ -496,11 +640,27 @@ blackboard_label = Button(input_frame, text="칠판",
 blackboard_label.grid(row=4, column=0, columnspan=4, pady=5)
 
 # 자리 배치 프레임
-frame = Frame(root, bg='white')
-frame.grid(row=1, column=0, columnspan=3, padx=20, pady=20)
+frame = Frame(main_container, bg='white')
+frame.pack(pady=20)
 
 # 카운트다운 라벨 추가
-countdown_label = Label(root, text='', font=('맑은 고딕', 40, 'bold'), bg='white', fg='red')
-countdown_label.grid(row=2, column=0, columnspan=3, pady=10)
+countdown_label = Label(main_container, text='', font=('맑은 고딕', 40, 'bold'), bg='white', fg='red')
+countdown_label.pack(pady=10)
+
+# 확대/축소 상태 표시 라벨
+zoom_status_label = Label(main_container, text="확대/축소: 100%", font=('맑은 고딕', 10), bg='white', fg='black')
+zoom_status_label.pack(side='bottom', anchor='se', padx=10, pady=5)
+
+# 단축키 안내 라벨
+shortcut_label = Label(main_container, text="단축키: ⌘+ 또는 ⌘= (확대) | ⌘- (축소) | ⌘0 (원래 크기)", 
+                      font=('맑은 고딕', 9), bg='white', fg='#666666')
+shortcut_label.pack(side='bottom', anchor='se', padx=10, pady=(0, 5))
+
+# 키보드 단축키 바인딩 (macOS 호환성 향상)
+root.bind('<Command-plus>', zoom_in)
+root.bind('<Command-equal>', zoom_in)  # Command + = (macOS에서 +와 =이 같은 키)
+root.bind('<Command-minus>', zoom_out)
+root.bind('<Command-0>', zoom_reset)
+root.bind('<Command-Key-0>', zoom_reset)  # macOS 호환성
 
 root.mainloop()
