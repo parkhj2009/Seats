@@ -205,10 +205,33 @@ def select_seat(i, j):
         else:
             selected.add(idx)
             seat_buttons[i][j].config(bg='lightgray', text='X', fg='black')
-    # 자리 배치 단계에서는 아무 동작도 하지 않음 (자리 교환 불가)
+    # 자리 배치 단계에서는 자리 교환
     else:
-        # 자리 배치 완료 후에는 자리 교환이 불가능함
-        pass
+        # 비활성화된 자리(X)는 선택할 수 없음
+        if seat_buttons[i][j]['text'] == 'X':
+            return
+            
+        if first_selected_seat is None:
+            first_selected_seat = (i, j)
+            seat_buttons[i][j].config(bg='yellow')
+        else:
+            # 두 번째 자리 선택 시 교환
+            i1, j1 = first_selected_seat
+            # 첫 번째 선택된 자리의 텍스트와 배경색 저장
+            temp_text = seat_buttons[i1][j1]['text']
+            temp_bg = seat_buttons[i1][j1]['bg']
+            
+            # 두 자리의 텍스트와 배경색 교환
+            seat_buttons[i1][j1].config(text=seat_buttons[i][j]['text'], bg='lightblue')
+            seat_buttons[i][j].config(text=temp_text, bg='lightblue')
+            
+            # 자리 배정 상태 업데이트
+            if temp_text and seat_buttons[i][j]['text']:
+                current_seat_assignment[temp_text] = (i, j)
+                current_seat_assignment[seat_buttons[i][j]['text']] = (i1, j1)
+            
+            # 첫 번째 선택 초기화
+            first_selected_seat = None
 
 def generate_seats():
     global seat_buttons, selected, is_seat_creation_phase, first_selected_seat, current_seat_assignment
@@ -280,6 +303,12 @@ def generate_seats():
 
             row_buttons.append(btn)
         seat_buttons.append(row_buttons)
+    
+    # 자리 배치 완료 후 모든 자리 버튼을 활성화 (클릭 가능하게)
+    for row_buttons in seat_buttons:
+        for btn in row_buttons:
+            if btn['text'] != 'X':  # 비활성화된 자리(X)가 아닌 경우에만
+                btn.config(state='normal')  # 버튼 활성화
 
 def create_excel_file():
     # 엑셀 파일 생성 함수
@@ -523,6 +552,13 @@ def start_countdown_and_generate_seats():
     if not can_assign_seats():
         return
     set_inputs_state('disabled')
+    
+    # 카운트다운 시작 시 기존 책상 버튼들을 비활성화
+    for row_buttons in seat_buttons:
+        for btn in row_buttons:
+            if btn.winfo_exists():
+                btn.config(state='disabled')
+    
     countdown_label.config(text='3')
     root.after(700, lambda: countdown_label.config(text='2'))
     root.after(1400, lambda: countdown_label.config(text='1'))
@@ -739,12 +775,12 @@ update_content_btn.pack()
 
 # 확대/축소 상태 표시 라벨
 zoom_status_label = Label(main_container, text="확대/축소: 100%", font=('맑은 고딕', 10), bg='white', fg='black')
-zoom_status_label.pack(side='bottom', anchor='se', padx=10, pady=5)
+zoom_status_label.pack(side='bottom', anchor='se', padx=10, pady=(0, 5))
 
 # 단축키 안내 라벨
 shortcut_label = Label(main_container, text="단축키: ⌘+ 또는 ⌘= (확대) | ⌘- (축소) | ⌘0 (원래 크기)", 
                       font=('맑은 고딕', 9), bg='white', fg='#666666')
-shortcut_label.pack(side='bottom', anchor='se', padx=10, pady=5)
+shortcut_label.pack(side='bottom', anchor='se', padx=10, pady=(0, 5))
 
 # 키보드 단축키 바인딩 (macOS 호환성 향상)
 root.bind('<Command-plus>', zoom_in)
