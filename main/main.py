@@ -156,6 +156,11 @@ def generate_candidate_buttons():
     seat_buttons = []
     selected = set()
     is_seat_creation_phase = True
+    
+    # 자리 배치 버튼 활성화
+    btn_generate_seats.config(state='normal')
+    
+
 
     try:
         nums = int(entry_students.get())
@@ -242,6 +247,8 @@ def generate_seats():
     is_seat_creation_phase = False  # 자리 생성 단계 종료
     first_selected_seat = None  # 첫 번째 선택된 자리 초기화
     current_seat_assignment.clear()  # 자리 배정 상태 초기화
+    
+
 
     try:
         nums = int(entry_students.get())
@@ -322,6 +329,11 @@ def create_excel_file():
         
         if not teacher:
             messagebox.showerror("오류", "담임선생님 성함을 입력해주세요!")
+            return
+            
+        # 자리 생성 단계를 거치지 않았으면 경고
+        if not seat_buttons:
+            messagebox.showerror("오류", "먼저 자리 생성을 완료해주세요!")
             return
             
         if not current_seat_assignment:
@@ -550,6 +562,11 @@ def can_assign_seats():
     return True
 
 def start_countdown_and_generate_seats():
+    # 자리 생성 단계를 거치지 않았으면 경고
+    if not seat_buttons:
+        messagebox.showerror("오류", "먼저 자리 생성을 완료해주세요!")
+        return
+        
     if not can_assign_seats():
         return
     set_inputs_state('disabled')
@@ -726,7 +743,7 @@ btn_generate_candidates.grid(row=0, column=0, padx=5, pady=5)
 btn_generate_seats = Button(btn_frame, text='자리 배치', 
                           command=start_countdown_and_generate_seats,
                           font=('맑은 고딕', 11, 'bold'), bg='#2196F3', fg='#000000',
-                          relief='raised', bd=2, width=10)
+                          relief='raised', bd=2, width=10, state='disabled')
 btn_generate_seats.grid(row=0, column=1, padx=5, pady=5)
 
 btn_create_excel = Button(btn_frame, text='엑셀 생성', 
@@ -744,17 +761,23 @@ all_inputs = [
 def set_inputs_state(state):
     for widget in all_inputs:
         widget.config(state=state)
+    
+    # 자리 배치 버튼은 자리 생성이 완료된 후에만 활성화
+    if state == 'normal' and not seat_buttons:
+        btn_generate_seats.config(state='disabled')
 
 # 설명 라벨
 info_label = Label(input_frame, text="사용법: 1. 정보 입력 → 2. 자리 생성 → 3. 비활성화할 자리 선택 → 4. 자리 배치 → 5. 엑셀 생성", 
                   bg='white', fg='#666666', font=('맑은 고딕', 20))
 info_label.grid(row=3, column=0, columnspan=4, pady=10)
 
+
+
 # 칠판 위치 표시 라벨
 blackboard_label = Button(input_frame, text="칠판", 
                         font=('맑은 고딕', 11, 'bold'), bg='#FF9800', fg='#000000',
                          relief='raised', bd=2, width=100)
-blackboard_label.grid(row=4, column=0, columnspan=4, pady=5)
+blackboard_label.grid(row=5, column=0, columnspan=4, pady=5)
 
 # 자리 배치 프레임
 frame = Frame(main_container, bg='white')
