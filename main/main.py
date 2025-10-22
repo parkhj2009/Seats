@@ -13,6 +13,8 @@ import os
 TOTAL_SEATS = 18
 COLS = 6
 ROWS = 3
+MAX_REPEAT = 50  # 자동 배치 최대 반복 횟수
+AUTO_RUN_DELAY_MS = 1200  # 자동 배치 간격(ms) - 3초
 
 # 전역 변수
 excluded = set()  # 제외할 번호
@@ -588,6 +590,21 @@ def start_countdown_and_generate_seats():
         return
     set_inputs_state('disabled')
     
+    # 반복 횟수 확인 및 제한 (0 허용, 실제 실행은 최소 1회)
+    repeat_raw = 1
+    try:
+        repeat_raw = int(entry_repeat.get())
+    except Exception:
+        repeat_raw = 1
+    if repeat_raw < 0:
+        repeat_raw = 0
+    if repeat_raw > MAX_REPEAT:
+        messagebox.showinfo("안내", f"반복 횟수를 {MAX_REPEAT}회로 제한합니다.")
+        repeat_raw = MAX_REPEAT
+
+    total_runs = max(repeat_raw, 1)
+    show_progress = total_runs > 1
+    
     # 카운트다운 시작 시 기존 책상 버튼들을 비활성화
     for row_buttons in seat_buttons:
         for btn in row_buttons:
@@ -597,7 +614,35 @@ def start_countdown_and_generate_seats():
     countdown_label.config(text='3')
     root.after(700, lambda: countdown_label.config(text='2'))
     root.after(1400, lambda: countdown_label.config(text='1'))
-    root.after(2100, lambda: [countdown_label.config(text=''), generate_seats(), set_inputs_state('normal')])
+    if total_runs == 1:
+        # 1회 실행: 진행 라벨 없이 바로 배치 실행
+        root.after(2100, lambda: [countdown_label.config(text=''), generate_seats(), set_inputs_state('normal')])
+    else:
+        root.after(2100, lambda: run_generate_iterations(total_runs, total_runs, show_progress))
+
+def run_generate_iterations(remaining, total, show_progress=True):
+    """자리 배치를 remaining 횟수만큼 자동으로 반복 실행"""
+    if remaining <= 0:
+        countdown_label.config(text='')
+        set_inputs_state('normal')
+        return
+    
+    # 배치 1회 실행
+    generate_seats()
+    done = total - remaining + 1
+    if show_progress:
+        countdown_label.config(text=f"{done}/{total}회")
+    
+    # 자동 실행 중에는 클릭 방지를 위해 버튼 비활성화 유지
+    if remaining > 1:
+        for row_buttons in seat_buttons:
+            for btn in row_buttons:
+                if btn.winfo_exists() and btn['text'] != 'X':
+                    btn.config(state='disabled')
+        root.after(AUTO_RUN_DELAY_MS, lambda: run_generate_iterations(remaining - 1, total, show_progress))
+    else:
+        # 마지막 회차 후 입력 활성화 및 상태 라벨 초기화
+        root.after(100, lambda: [countdown_label.config(text=''), set_inputs_state('normal')])
 
 def set_border_to_merged_range(ws, merge_range, border):
     min_col, min_row, max_col, max_row = range_boundaries(merge_range)
@@ -747,6 +792,13 @@ label_exclude.grid(row=2, column=0, padx=10, pady=5, sticky='e')
 entry_exclude = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg='white', fg='black')
 entry_exclude.grid(row=2, column=1, padx=10, pady=5)
 
+# 자동 반복 횟수 입력
+label_repeat = Label(input_frame, text='자동 반복 횟수', bg='white', fg='black', font=('맑은 고딕', 12, 'bold'))
+label_repeat.grid(row=4, column=0, padx=10, pady=5, sticky='e')
+entry_repeat = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg='white', fg='black')
+entry_repeat.grid(row=4, column=1, padx=10, pady=5)
+entry_repeat.insert(0, '1')
+
 # 버튼들
 btn_frame = Frame(input_frame, bg='white')
 btn_frame.grid(row=2, column=2, columnspan=2, padx=10, pady=5)
@@ -771,7 +823,7 @@ btn_create_excel.grid(row=0, column=2, padx=5, pady=5)
 
 # 입력 필드와 버튼을 리스트로 관리
 all_inputs = [
-    entry_grade, entry_group, entry_students, entry_teacher, entry_exclude,
+    entry_grade, entry_group, entry_students, entry_teacher, entry_exclude, entry_repeat,
     btn_generate_candidates, btn_generate_seats, btn_create_excel
 ]
 
