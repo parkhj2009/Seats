@@ -9,6 +9,11 @@ from openpyxl.styles import Border, Side, Font, Alignment
 from openpyxl.utils import range_boundaries
 import os
 
+# 좌석 배치 고정 상수
+TOTAL_SEATS = 18
+COLS = 6
+ROWS = 3
+
 # 전역 변수
 excluded = set()  # 제외할 번호
 selected = set()  # 비활성화된 자리 번호
@@ -128,6 +133,12 @@ def add_excluded_numbers():
         
         # 입력된 번호들을 처리
         numbers = entry_exclude.get().strip()
+        # 전체 학생 수 (개별 번호 유효성 검사에 사용)
+        total_students = None
+        try:
+            total_students = int(entry_students.get())
+        except Exception:
+            pass
         if numbers:
             # 쉼표로 구분된 번호들을 처리
             for num in numbers.split(','):
@@ -136,6 +147,9 @@ def add_excluded_numbers():
                     num = int(num)
                     if num <= 0:
                         messagebox.showerror("오류", "1 이상의 숫자만 입력 가능합니다!")
+                        return False
+                    if total_students is not None and num > total_students:
+                        messagebox.showerror("오류", "제외할 번호가 학생 수 범위를 초과했습니다!")
                         return False
                     excluded.add(num)
         
@@ -167,16 +181,16 @@ def generate_candidate_buttons():
         if nums <= 0:
             messagebox.showerror("오류", "올바른 학생 수를 입력해주세요!")
             return
-        if nums > 20:
-            messagebox.showerror("오류", "학생 수는 20명 이하로만 입력 가능합니다!")
+        if nums > TOTAL_SEATS:
+            messagebox.showerror("오류", f"학생 수는 {TOTAL_SEATS}명 이하로만 입력 가능합니다!")
             return
     except ValueError:
         messagebox.showerror("오류", "올바른 학생 수를 입력해주세요!")
         return
 
-    total_seats = 18
-    cols = 6
-    rows = 3
+    total_seats = TOTAL_SEATS
+    cols = COLS
+    rows = ROWS
 
     for i in range(rows):
         row_buttons = []
@@ -255,6 +269,9 @@ def generate_seats():
         if nums <= 0:
             messagebox.showerror("오류", "올바른 학생 수를 입력해주세요!")
             return
+        if nums > TOTAL_SEATS:
+            messagebox.showerror("오류", f"학생 수는 {TOTAL_SEATS}명 이하로만 입력 가능합니다!")
+            return
     except ValueError:
         messagebox.showerror("오류", "올바른 학생 수를 입력해주세요!")
         return
@@ -263,10 +280,10 @@ def generate_seats():
     if not add_excluded_numbers():
         return
 
-    # 18개 자리로 고정 (기존 코드와 동일)
-    total_seats = 18
-    cols = 6  # 6열로 고정
-    rows = 3  # 3행으로 고정
+    # 좌석 배치 고정 값 사용
+    total_seats = TOTAL_SEATS
+    cols = COLS  # 6열로 고정
+    rows = ROWS  # 3행으로 고정
 
     # 제외된 학생을 제외한 학생 리스트 생성
     available_students = [i for i in range(1, nums + 1) if i not in excluded]
@@ -524,10 +541,10 @@ def create_excel_file():
     x1['B23'].font = Pretendard
 
     x1['A5'] = "사물함"
-    x1['B23'].font = Pretendard
+    x1['A5'].font = Pretendard
     
     x1['L5'] = "사물함"
-    x1['B23'].font = Pretendard
+    x1['L5'].font = Pretendard
 
     # 엑셀 파일 저장
     try:
@@ -552,7 +569,7 @@ def can_assign_seats():
         generate_candidate_buttons()
         return False
 
-    total_seats = 18
+    total_seats = TOTAL_SEATS
     active_seats = total_seats - len(selected)
     available_students = [i for i in range(1, nums + 1) if i not in excluded]
     if active_seats != len(available_students):
