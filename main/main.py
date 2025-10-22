@@ -1,5 +1,6 @@
 # 2025년도에 만든 교실 자리 뽑기 프로그램 V2
 # 2025.09.01 - V2.5.0
+# 2025.10.23 - V2.6.0
 import tkinter as tk
 from tkinter import *
 import random as r
@@ -13,8 +14,8 @@ import os
 TOTAL_SEATS = 18
 COLS = 6
 ROWS = 3
-MAX_REPEAT = 50  # 자동 배치 최대 반복 횟수
-AUTO_RUN_DELAY_MS = 1200  # 자동 배치 간격(ms) - 3초
+MAX_REPEAT = 100  # 자동 배치 최대 반복 횟수
+AUTO_RUN_DELAY_MS = 1000  # 자동 배치 간격(ms) - 1초
 
 # 전역 변수
 excluded = set()  # 제외할 번호
@@ -25,6 +26,11 @@ first_selected_seat = None  # 첫 번째 선택된 자리
 current_seat_assignment = {}  # 현재 자리 배정 상태
 current_scale = 1.0  # 현재 UI 크기 배율
 update_window = None  # 업데이트 내용 편집 창
+auto_run_active = False  # 자동 반복 실행 중 여부
+speed_factor = 1.0      # 자동 반복 속도 배수(1.0=기본, 0.5=2배 빠름)
+speed_key_press_count = 0  # 자동 반복 중 속도키('1') 누른 횟수 누적
+speed_boost_applied = False  # 속도 증가 이미 적용 여부
+boost_count = 0         # 적용된 2배 속도 부스트 횟수(0=기본,1=x2,2=x4,3=x8)
 
 def zoom_in(event=None):
     """UI 확대 (Command + '+' 또는 Command + '=')"""
@@ -73,6 +79,8 @@ def apply_zoom():
             label_teacher.config(font=('맑은 고딕', new_font_size, 'bold'))
         if 'label_exclude' in globals() and label_exclude.winfo_exists():
             label_exclude.config(font=('맑은 고딕', new_font_size, 'bold'))
+        if 'label_repeat' in globals() and label_repeat.winfo_exists():
+            label_repeat.config(font=('맑은 고딕', new_font_size, 'bold'))
         
         # 입력 필드 폰트 크기 조정 (존재하는 경우에만)
         if 'entry_grade' in globals() and entry_grade.winfo_exists():
@@ -85,6 +93,8 @@ def apply_zoom():
             entry_teacher.config(font=('맑은 고딕', new_font_size))
         if 'entry_exclude' in globals() and entry_exclude.winfo_exists():
             entry_exclude.config(font=('맑은 고딕', new_font_size))
+        if 'entry_repeat' in globals() and entry_repeat.winfo_exists():
+            entry_repeat.config(font=('맑은 고딕', new_font_size))
         
         # 버튼 폰트 크기 조정 (존재하는 경우에만)
         if 'btn_generate_candidates' in globals() and btn_generate_candidates.winfo_exists():
@@ -118,7 +128,6 @@ def apply_zoom():
             
     except Exception as e:
         print(f"확대/축소 적용 중 오류: {e}")
-        # 오류가 발생해도 프로그램이 중단되지 않도록 함
 
 def toggle_exclude(num, button):
     if num in excluded:
@@ -588,22 +597,28 @@ def start_countdown_and_generate_seats():
         
     if not can_assign_seats():
         return
-    set_inputs_state('disabled')
-    
-    # 반복 횟수 확인 및 제한 (0 허용, 실제 실행은 최소 1회)
-    repeat_raw = 1
-    try:
-        repeat_raw = int(entry_repeat.get())
-    except Exception:
+    # 반복 횟수 확인 및 제한 (빈값은 1회, 0 이하는 오류 처리)
+    repeat_str = entry_repeat.get().strip()
+    if repeat_str == '':
         repeat_raw = 1
-    if repeat_raw < 0:
-        repeat_raw = 0
+    else:
+        try:
+            repeat_raw = int(repeat_str)
+        except Exception:
+            messagebox.showerror("오류", "자동 반복 횟수는 숫자로 입력해주세요!")
+            return
+        if repeat_raw <= 0:
+            messagebox.showerror("오류", "자동 반복 횟수는 1 이상 입력해주세요!")
+            return
     if repeat_raw > MAX_REPEAT:
-        messagebox.showinfo("안내", f"반복 횟수를 {MAX_REPEAT}회로 제한합니다.")
-        repeat_raw = MAX_REPEAT
+        # 최대 반복 횟수 초과 시 경고만 표시하고 배치를 진행하지 않음
+        messagebox.showwarning("경고", f"자동 반복 횟수는 최대 {MAX_REPEAT}회까지 가능합니다.")
+        return
 
-    total_runs = max(repeat_raw, 1)
+    total_runs = repeat_raw
     show_progress = total_runs > 1
+
+    set_inputs_state('disabled')
     
     # 카운트다운 시작 시 기존 책상 버튼들을 비활성화
     for row_buttons in seat_buttons:
@@ -618,20 +633,34 @@ def start_countdown_and_generate_seats():
         # 1회 실행: 진행 라벨 없이 바로 배치 실행
         root.after(2100, lambda: [countdown_label.config(text=''), generate_seats(), set_inputs_state('normal')])
     else:
+        # 자동 반복 상태 초기화 및 활성화
+        global auto_run_active, speed_factor, speed_key_press_count, speed_boost_applied, boost_count
+        auto_run_active = True
+        speed_factor = 1.0
+        speed_key_press_count = 0
+        speed_boost_applied = False
+        boost_count = 0
         root.after(2100, lambda: run_generate_iterations(total_runs, total_runs, show_progress))
 
 def run_generate_iterations(remaining, total, show_progress=True):
     """자리 배치를 remaining 횟수만큼 자동으로 반복 실행"""
+    global auto_run_active, speed_factor, speed_key_press_count, speed_boost_applied, boost_count
     if remaining <= 0:
         countdown_label.config(text='')
         set_inputs_state('normal')
+        auto_run_active = False
+        speed_factor = 1.0
+        speed_key_press_count = 0
+        speed_boost_applied = False
+        boost_count = 0
         return
     
     # 배치 1회 실행
     generate_seats()
     done = total - remaining + 1
     if show_progress:
-        countdown_label.config(text=f"{done}/{total}회")
+        suffix = f" x{2 ** boost_count}" if boost_count > 0 else ""
+        countdown_label.config(text=f"{done}/{total}회{suffix}")
     
     # 자동 실행 중에는 클릭 방지를 위해 버튼 비활성화 유지
     if remaining > 1:
@@ -639,10 +668,48 @@ def run_generate_iterations(remaining, total, show_progress=True):
             for btn in row_buttons:
                 if btn.winfo_exists() and btn['text'] != 'X':
                     btn.config(state='disabled')
-        root.after(AUTO_RUN_DELAY_MS, lambda: run_generate_iterations(remaining - 1, total, show_progress))
+        # 현재 속도 배수 적용하여 다음 실행 스케줄링
+        delay_ms = max(1, int(AUTO_RUN_DELAY_MS * speed_factor))
+        root.after(delay_ms, lambda: run_generate_iterations(remaining - 1, total, show_progress))
     else:
         # 마지막 회차 후 입력 활성화 및 상태 라벨 초기화
-        root.after(100, lambda: [countdown_label.config(text=''), set_inputs_state('normal')])
+        def _finalize_after_last():
+            countdown_label.config(text='')
+            set_inputs_state('normal')
+            # 자동 반복 및 속도 상태 리셋 (마지막 회차 종료 시점에만)
+            global auto_run_active, speed_factor, speed_key_press_count, speed_boost_applied, boost_count
+            auto_run_active = False
+            speed_factor = 1.0
+            speed_key_press_count = 0
+            speed_boost_applied = False
+            boost_count = 0
+        root.after(100, _finalize_after_last)
+
+def on_speed_key_press(event=None):
+    """자동 반복 중 '1' 키 4회 입력마다 속도 2배 증가(최대 x8)"""
+    global speed_key_press_count, speed_factor, boost_count
+    if not auto_run_active:
+        return
+    speed_key_press_count += 1
+    if speed_key_press_count >= 4:
+        if boost_count < 3:  # x2, x4, x8 까지만
+            boost_count += 1
+            speed_factor *= 0.5  # 딜레이 절반 → 2배 속도
+            # 진행 라벨에 속도 배수 표시
+            try:
+                current_text = countdown_label.cget('text')
+                if current_text:
+                    suffix = f" x{2 ** boost_count}"
+                    # 기존 텍스트의 배수 표시는 덮어쓰도록 재구성
+                    parts = current_text.split('회')
+                    if len(parts) >= 1:
+                        base = parts[0] + '회'
+                        countdown_label.config(text=f"{base}{suffix}")
+                    else:
+                        countdown_label.config(text=f"{current_text}{suffix}")
+            except Exception:
+                pass
+        speed_key_press_count = 0
 
 def set_border_to_merged_range(ws, merge_range, border):
     min_col, min_row, max_col, max_row = range_boundaries(merge_range)
@@ -797,7 +864,6 @@ label_repeat = Label(input_frame, text='자동 반복 횟수', bg='white', fg='b
 label_repeat.grid(row=4, column=0, padx=10, pady=5, sticky='e')
 entry_repeat = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg='white', fg='black')
 entry_repeat.grid(row=4, column=1, padx=10, pady=5)
-entry_repeat.insert(0, '1')
 
 # 버튼들
 btn_frame = Frame(input_frame, bg='white')
@@ -881,5 +947,9 @@ root.bind('<Command-equal>', zoom_in)  # Command + = (macOS에서 +와 =이 같�
 root.bind('<Command-minus>', zoom_out)
 root.bind('<Command-0>', zoom_reset)
 root.bind('<Command-Key-0>', zoom_reset)  # macOS 호환성
+# 속도 증가 트리거(1 키 4연타) - 포커스에 상관없이 동작하도록 전체 바인딩
+root.bind_all('<KeyPress-1>', on_speed_key_press)
+# 숫자 키패드의 1도 인식 (필요 시)
+root.bind_all('<KeyPress-KP_1>', on_speed_key_press)
 
 root.mainloop()
