@@ -15,7 +15,7 @@ TOTAL_SEATS = 18
 COLS = 6
 ROWS = 3
 MAX_REPEAT = 100  # 자동 배치 최대 반복 횟수
-AUTO_RUN_DELAY_MS = 1000  # 자동 배치 간격(ms) - 1초
+AUTO_RUN_DELAY_MS = 500  # 자동 배치 간격(ms) - 0.5초
 
 # 전역 변수
 excluded = set()  # 제외할 번호
