@@ -11,6 +11,7 @@ from openpyxl.utils import range_boundaries
 import os
 
 # 좌석 배치 고정 상수
+Title_Text = "🎓 교실 자리 배치 프로그램 🎓"
 TOTAL_SEATS = 18
 COLS = 6
 ROWS = 3
@@ -68,15 +69,15 @@ def apply_zoom():
         new_title_font_size = int(base_title_font_size * current_scale)
         new_countdown_font_size = int(base_countdown_font_size * current_scale)
         
-        # 라벨 폰트 크기 조정 (존재하는 경우에만)
-        if 'label_grade' in globals() and label_grade.winfo_exists():
-            label_grade.config(font=('맑은 고딕', new_font_size, 'bold'))
-        if 'label_group' in globals() and label_group.winfo_exists():
-            label_group.config(font=('맑은 고딕', new_font_size, 'bold'))
-        if 'label_students' in globals() and label_students.winfo_exists():
-            label_students.config(font=('맑은 고딕', new_font_size, 'bold'))
-        if 'label_teacher' in globals() and label_teacher.winfo_exists():
-            label_teacher.config(font=('맑은 고딕', new_font_size, 'bold'))
+        # 라벨 폰트 크기 조정 (존재하는 경우에만) - Frame으로 감싸져 있으므로 주석 처리
+        # if 'label_grade' in globals() and label_grade.winfo_exists():
+        #     label_grade.config(font=('맑은 고딕', new_font_size, 'bold'))
+        # if 'label_group' in globals() and label_group.winfo_exists():
+        #     label_group.config(font=('맑은 고딕', new_font_size, 'bold'))
+        # if 'label_students' in globals() and label_students.winfo_exists():
+        #     label_students.config(font=('맑은 고딕', new_font_size, 'bold'))
+        # if 'label_teacher' in globals() and label_teacher.winfo_exists():
+        #     label_teacher.config(font=('맑은 고딕', new_font_size, 'bold'))
         if 'label_exclude' in globals() and label_exclude.winfo_exists():
             label_exclude.config(font=('맑은 고딕', new_font_size, 'bold'))
         if 'label_repeat' in globals() and label_repeat.winfo_exists():
@@ -774,7 +775,12 @@ def open_update_editor():
     
     # 기존 업데이트 내용 로드
     try:
-        with open('main/update_log.txt', 'r', encoding='utf-8') as f:
+        # 현재 스크립트 위치 기준으로 파일 경로 설정
+        import os
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        log_file_path = os.path.join(script_dir, 'update_log.txt')
+        
+        with open(log_file_path, 'r', encoding='utf-8') as f:
             content = f.read()
             text_widget.config(state='normal')
             text_widget.insert('1.0', content)
@@ -782,6 +788,10 @@ def open_update_editor():
     except FileNotFoundError:
         text_widget.config(state='normal')
         text_widget.insert('1.0', "업데이트 내용을 불러올 수 없습니다.")
+        text_widget.config(state='disabled')
+    except Exception as e:
+        text_widget.config(state='normal')
+        text_widget.insert('1.0', f"파일을 읽는 중 오류가 발생했습니다: {str(e)}")
         text_widget.config(state='disabled')
     
     # 버튼 프레임
@@ -798,7 +808,11 @@ def open_update_editor():
 def save_update_content(content):
     """업데이트 내용을 파일에 저장합니다"""
     try:
-        with open('main/update_log.txt', 'w', encoding='utf-8') as f:
+        import os
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        log_file_path = os.path.join(script_dir, 'update_log.txt')
+        
+        with open(log_file_path, 'w', encoding='utf-8') as f:
             f.write(content)
         messagebox.showinfo("성공", "업데이트 내용이 저장되었습니다!")
     except Exception as e:
@@ -807,7 +821,11 @@ def save_update_content(content):
 def load_update_content(text_widget):
     """파일에서 업데이트 내용을 다시 로드합니다"""
     try:
-        with open('main/update_log.txt', 'r', encoding='utf-8') as f:
+        import os
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        log_file_path = os.path.join(script_dir, 'update_log.txt')
+        
+        with open(log_file_path, 'r', encoding='utf-8') as f:
             content = f.read()
             text_widget.config(state='normal')
             text_widget.delete('1.0', 'end')
@@ -830,49 +848,63 @@ main_container = Frame(root, bg='white')
 main_container.pack(expand=True, fill='both', padx=20, pady=20)
 
 # 타이틀 라벨
-title_label = Label(main_container, text="🎓 교실 자리 배치 프로그램", 
-                   bg='white', fg='#1976D2', font=('맑은 고딕', 24, 'bold'))
+title_label = Label(main_container, text=Title_Text, 
+                   bg='white', fg='#F30000', font=('맑은 고딕', 24, 'bold'))
 title_label.pack(pady=(0, 15))
 
 # 입력 프레임 생성
 input_frame = Frame(main_container, bg='white')
 input_frame.pack(pady=(0, 20))
 
-# 입력 필드들
-label_grade = Label(input_frame, text='학년', bg='white', fg='black', font=('맑은 고딕', 12, 'bold'))
-label_grade.grid(row=0, column=0, padx=10, pady=5, sticky='e')
+# 입력 필드들 - 첫 번째 행
+label_grade_frame = Frame(input_frame, bg='white')
+label_grade_frame.grid(row=0, column=0, padx=10, pady=5, sticky='e')
+Label(label_grade_frame, text='학년', bg='white', fg='black', font=('맑은 고딕', 12, 'bold')).pack(side='left')
+Label(label_grade_frame, text='*', bg='white', fg='red', font=('맑은 고딕', 12, 'bold')).pack(side='left')
 entry_grade = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg='white', fg='black')
 entry_grade.grid(row=0, column=1, padx=10, pady=5)
 
-label_group = Label(input_frame, text='반', bg='white', fg='black', font=('맑은 고딕', 12, 'bold'))
-label_group.grid(row=0, column=2, padx=10, pady=5, sticky='e')
+label_group_frame = Frame(input_frame, bg='white')
+label_group_frame.grid(row=0, column=2, padx=10, pady=5, sticky='e')
+Label(label_group_frame, text='반', bg='white', fg='black', font=('맑은 고딕', 12, 'bold')).pack(side='left')
+Label(label_group_frame, text='*', bg='white', fg='red', font=('맑은 고딕', 12, 'bold')).pack(side='left')
 entry_group = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg='white', fg='black')
 entry_group.grid(row=0, column=3, padx=10, pady=5)
 
-label_students = Label(input_frame, text='학생 수\n(1~18)', bg='white', fg='black', font=('맑은 고딕', 12, 'bold'))
-label_students.grid(row=1, column=0, padx=10, pady=5, sticky='e')
+# 두 번째 행
+label_students_frame = Frame(input_frame, bg='white')
+label_students_frame.grid(row=1, column=0, padx=10, pady=5, sticky='e')
+Label(label_students_frame, text='학생 수\n(1~18)', bg='white', fg='black', font=('맑은 고딕', 12, 'bold')).pack(side='left')
+Label(label_students_frame, text='*', bg='white', fg='red', font=('맑은 고딕', 12, 'bold')).pack(side='left')
 entry_students = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg='white', fg='black')
 entry_students.grid(row=1, column=1, padx=10, pady=5)
 
-label_teacher = Label(input_frame, text='담임선생님', bg='white', fg='black', font=('맑은 고딕', 12, 'bold'))
-label_teacher.grid(row=1, column=2, padx=10, pady=5, sticky='e')
+label_teacher_frame = Frame(input_frame, bg='white')
+label_teacher_frame.grid(row=1, column=2, padx=10, pady=5, sticky='e')
+Label(label_teacher_frame, text='담임선생님', bg='white', fg='black', font=('맑은 고딕', 12, 'bold')).pack(side='left')
+Label(label_teacher_frame, text='*', bg='white', fg='red', font=('맑은 고딕', 12, 'bold')).pack(side='left')
 entry_teacher = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg='white', fg='black')
 entry_teacher.grid(row=1, column=3, padx=10, pady=5)
 
-label_exclude = Label(input_frame, text='제외할 번호\n(쉼표로 구분)', bg='white', fg='black', font=('맑은 고딕', 12, 'bold'))
-label_exclude.grid(row=2, column=0, padx=10, pady=5, sticky='e')
-entry_exclude = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg='white', fg='black')
-entry_exclude.grid(row=2, column=1, padx=10, pady=5)
-
-# 자동 반복 횟수 입력
+# 세 번째 행
 label_repeat = Label(input_frame, text='자동 반복 횟수', bg='white', fg='black', font=('맑은 고딕', 12, 'bold'))
-label_repeat.grid(row=4, column=0, padx=10, pady=5, sticky='e')
+label_repeat.grid(row=2, column=0, padx=10, pady=5, sticky='e')
 entry_repeat = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg='white', fg='black')
-entry_repeat.grid(row=4, column=1, padx=10, pady=5)
+entry_repeat.grid(row=2, column=1, padx=10, pady=5)
 
-# 버튼들
+label_exclude = Label(input_frame, text='제외할 번호\n(쉼표로 구분)', bg='white', fg='black', font=('맑은 고딕', 12, 'bold'))
+label_exclude.grid(row=2, column=2, padx=10, pady=5, sticky='e')
+entry_exclude = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg='white', fg='black')
+entry_exclude.grid(row=2, column=3, padx=10, pady=5)
+
+# 설명 라벨 - 네 번째 행
+info_label = Label(input_frame, text="사용법: 1. 정보 입력 → 2. 자리 생성 → 3. 비활성화할 자리 선택 → 4. 자리 배치 → 5. 엑셀 생성", 
+                  bg='white', fg='#666666', font=('맑은 고딕', 20))
+info_label.grid(row=3, column=0, columnspan=4, pady=10)
+
+# 버튼들 - 다섯 번째 행
 btn_frame = Frame(input_frame, bg='white')
-btn_frame.grid(row=2, column=2, columnspan=2, padx=10, pady=5)
+btn_frame.grid(row=4, column=0, columnspan=4, pady=10)
 
 btn_generate_candidates = Button(btn_frame, text='자리 생성', 
                                command=generate_candidate_buttons,
@@ -906,13 +938,6 @@ def set_inputs_state(state):
     if state == 'normal' and not seat_buttons:
         btn_generate_seats.config(state='disabled')
 
-# 설명 라벨
-info_label = Label(input_frame, text="사용법: 1. 정보 입력 → 2. 자리 생성 → 3. 비활성화할 자리 선택 → 4. 자리 배치 → 5. 엑셀 생성", 
-                  bg='white', fg='#666666', font=('맑은 고딕', 20))
-info_label.grid(row=3, column=0, columnspan=4, pady=10)
-
-
-
 # 칠판 위치 표시 라벨
 blackboard_label = Button(input_frame, text="칠판", 
                         font=('맑은 고딕', 11, 'bold'), bg='#FF9800', fg='#000000',
@@ -937,14 +962,14 @@ update_content_btn = Button(update_button_frame, text='업데이트 내용',
                            relief='raised', bd=2, width=10)
 update_content_btn.pack()
 
-# 확대/축소 상태 표시 라벨
-zoom_status_label = Label(main_container, text="확대/축소: 100%", font=('맑은 고딕', 10), bg='white', fg='black')
-zoom_status_label.pack(side='bottom', anchor='se', padx=10, pady=(0, 5))
+# 확대/축소 상태 표시 라벨 (root에 직접 배치하여 오른쪽 맨 밑에 배치)
+zoom_status_label = Label(root, text="확대/축소: 100%", font=('맑은 고딕', 10), bg='white', fg='black')
+zoom_status_label.place(relx=1.0, rely=1.0, anchor='se', x=-10, y=-30)
 
-# 단축키 안내 라벨
-shortcut_label = Label(main_container, text="단축키: ⌘+ 또는 ⌘= (확대) | ⌘- (축소) | ⌘0 (원래 크기)", 
+# 단축키 안내 라벨 (root에 직접 배치하여 오른쪽 하단에 배치)
+shortcut_label = Label(root, text="단축키: ⌘+ 또는 ⌘= (확대) | ⌘- (축소) | ⌘0 (원래 크기)", 
                       font=('맑은 고딕', 9), bg='white', fg='#666666')
-shortcut_label.pack(side='bottom', anchor='se', padx=10, pady=(0, 5))
+shortcut_label.place(relx=1.0, rely=1.0, anchor='se', x=-10, y=-10)
 
 # 키보드 단축키 바인딩 (macOS 호환성 향상)
 root.bind('<Command-plus>', zoom_in)
