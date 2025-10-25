@@ -829,6 +829,11 @@ root.config(bg='white')
 main_container = Frame(root, bg='white')
 main_container.pack(expand=True, fill='both', padx=20, pady=20)
 
+# 타이틀 라벨
+title_label = Label(main_container, text="🎓 교실 자리 배치 프로그램", 
+                   bg='white', fg='#1976D2', font=('맑은 고딕', 24, 'bold'))
+title_label.pack(pady=(0, 15))
+
 # 입력 프레임 생성
 input_frame = Frame(main_container, bg='white')
 input_frame.pack(pady=(0, 20))
