@@ -1,7 +1,5 @@
 # 2025년도에 만든 교실 자리 뽑기 프로그램 V2
-# 2025.09.01 - V2.5.0
-# 2025.10.23 - V2.6.0
-# 2025.10.26 - V2.6.2
+# 2025.10.31 - V2.6.3
 import tkinter as tk
 from tkinter import *
 import random as r
@@ -33,6 +31,117 @@ speed_factor = 1.0      # 자동 반복 속도 배수(1.0=기본, 0.5=2배 빠�
 speed_key_press_count = 0  # 자동 반복 중 속도키('1') 누른 횟수 누적
 speed_boost_applied = False  # 속도 증가 이미 적용 여부
 boost_count = 0         # 적용된 2배 속도 부스트 횟수(0=기본,1=x2,2=x4,3=x8)
+current_theme = 'light'  # 현재 테마
+theme_window = None  # 테마 설정 창
+
+# 테마 색상 정의
+THEMES = {
+    'light': {
+        'bg': 'white',
+        'fg': 'black',
+        'title_fg': '#F30000',
+        'input_bg': 'white',
+        'input_fg': 'black',
+        'button_generate': '#4CAF50',
+        'button_assign': '#2196F3',
+        'button_excel': '#FF9800',
+        'button_fg': 'black',
+        'seat_bg': 'lightblue',
+        'seat_fg': 'black',
+        'disabled_seat_bg': 'lightgray',
+        'disabled_seat_fg': 'black',
+        'selected_seat_bg': 'yellow',
+        'selected_seat_fg': 'black',
+        'blackboard_bg': '#FF9800',
+        'blackboard_fg': 'black',
+        'info_fg': '#666666',
+        'countdown_fg': 'red'
+    },
+    'dark': {
+        'bg': '#1e1e1e',
+        'fg': '#ffffff',
+        'title_fg': '#FF6B6B',
+        'input_bg': '#2d2d2d',
+        'input_fg': '#ffffff',
+        'button_generate': '#4CAF50',
+        'button_assign': '#2196F3',
+        'button_excel': '#FF9800',
+        'button_fg': 'black',
+        'seat_bg': '#1565c0',
+        'seat_fg': '#ffffff',
+        'disabled_seat_bg': '#424242',
+        'disabled_seat_fg': '#ffffff',
+        'selected_seat_bg': '#fdd835',
+        'selected_seat_fg': '#000000',
+        'blackboard_bg': '#FF9800',
+        'blackboard_fg': 'black',
+        'info_fg': '#b0b0b0',
+        'countdown_fg': '#ff5252'
+    },
+    'blue': {
+        'bg': '#e3f2fd',
+        'fg': '#0d47a1',
+        'title_fg': '#1565c0',
+        'input_bg': '#ffffff',
+        'input_fg': '#0d47a1',
+        'button_generate': '#1976d2',
+        'button_assign': '#0288d1',
+        'button_excel': '#0277bd',
+        'button_fg': 'black',
+        'seat_bg': '#90caf9',
+        'seat_fg': '#0d47a1',
+        'disabled_seat_bg': '#bbdefb',
+        'disabled_seat_fg': '#0d47a1',
+        'selected_seat_bg': '#ffeb3b',
+        'selected_seat_fg': '#000000',
+        'blackboard_bg': '#0277bd',
+        'blackboard_fg': 'black',
+        'info_fg': '#1565c0',
+        'countdown_fg': '#d32f2f'
+    },
+    'green': {
+        'bg': '#e8f5e9',
+        'fg': '#1b5e20',
+        'title_fg': '#2e7d32',
+        'input_bg': '#ffffff',
+        'input_fg': '#1b5e20',
+        'button_generate': '#43a047',
+        'button_assign': '#66bb6a',
+        'button_excel': '#4caf50',
+        'button_fg': 'black',
+        'seat_bg': '#a5d6a7',
+        'seat_fg': '#1b5e20',
+        'disabled_seat_bg': '#c8e6c9',
+        'disabled_seat_fg': '#1b5e20',
+        'selected_seat_bg': '#ffeb3b',
+        'selected_seat_fg': '#000000',
+        'blackboard_bg': '#4caf50',
+        'blackboard_fg': 'black',
+        'info_fg': '#2e7d32',
+        'countdown_fg': '#d32f2f'
+    },
+    'purple': {
+        'bg': '#f3e5f5',
+        'fg': '#4a148c',
+        'title_fg': '#6a1b9a',
+        'input_bg': '#ffffff',
+        'input_fg': '#4a148c',
+        'button_generate': '#8e24aa',
+        'button_assign': '#ab47bc',
+        'button_excel': '#ba68c8',
+        'button_fg': 'black',
+        'seat_bg': '#ce93d8',
+        'seat_fg': '#4a148c',
+        'disabled_seat_bg': '#e1bee7',
+        'disabled_seat_fg': '#4a148c',
+        'selected_seat_bg': '#ffeb3b',
+        'selected_seat_fg': '#000000',
+        'blackboard_bg': '#ba68c8',
+        'blackboard_fg': 'black',
+        'info_fg': '#6a1b9a',
+        'countdown_fg': '#d32f2f'
+    }
+}
 
 def zoom_in(event=None):
     """UI 확대 (Command + '+' 또는 Command + '=')"""
@@ -131,6 +240,179 @@ def apply_zoom():
     except Exception as e:
         print(f"확대/축소 적용 중 오류: {e}")
 
+def apply_theme(theme_name):
+    """선택한 테마를 전체 UI에 적용"""
+    global current_theme
+    current_theme = theme_name
+    theme = THEMES[theme_name]
+    
+    try:
+        # 메인 윈도우 및 컨테이너
+        root.config(bg=theme['bg'])
+        main_container.config(bg=theme['bg'])
+        
+        # 타이틀
+        title_label.config(bg=theme['bg'], fg=theme['title_fg'])
+        
+        # 입력 프레임
+        input_frame.config(bg=theme['bg'])
+        
+        # 입력 필드 라벨 프레임들
+        label_grade_frame.config(bg=theme['bg'])
+        label_group_frame.config(bg=theme['bg'])
+        label_students_frame.config(bg=theme['bg'])
+        label_teacher_frame.config(bg=theme['bg'])
+        
+        # 라벨들
+        for widget in [label_grade_frame, label_group_frame, label_students_frame, label_teacher_frame]:
+            for child in widget.winfo_children():
+                if isinstance(child, Label):
+                    if child['fg'] == 'red':  # * 표시는 빨간색 유지
+                        child.config(bg=theme['bg'], fg='red')
+                    else:
+                        child.config(bg=theme['bg'], fg=theme['fg'])
+        
+        label_exclude.config(bg=theme['bg'], fg=theme['fg'])
+        label_repeat.config(bg=theme['bg'], fg=theme['fg'])
+        
+        # 입력 필드들
+        for entry in [entry_grade, entry_group, entry_students, entry_teacher, entry_exclude, entry_repeat]:
+            entry.config(bg=theme['input_bg'], fg=theme['input_fg'], insertbackground=theme['input_fg'])
+        
+        # 설명 라벨
+        info_label.config(bg=theme['bg'], fg=theme['info_fg'])
+        
+        # 버튼 프레임
+        btn_frame.config(bg=theme['bg'])
+        
+        # 버튼들
+        btn_generate_candidates.config(bg=theme['button_generate'], fg=theme['button_fg'])
+        btn_generate_seats.config(bg=theme['button_assign'], fg=theme['button_fg'])
+        btn_create_excel.config(bg=theme['button_excel'], fg=theme['button_fg'])
+        
+        # 칠판
+        blackboard_label.config(bg=theme['blackboard_bg'], fg=theme['blackboard_fg'])
+        
+        # 자리 배치 프레임
+        frame.config(bg=theme['bg'])
+        
+        # 카운트다운
+        countdown_label.config(bg=theme['bg'], fg=theme['countdown_fg'])
+        
+        # 업데이트 버튼 프레임
+        update_button_frame.config(bg=theme['bg'])
+        update_content_btn.config(bg=theme['button_generate'], fg=theme['button_fg'])
+        
+        # 테마 버튼 (추가될 예정)
+        if 'theme_button_frame' in globals() and theme_button_frame.winfo_exists():
+            theme_button_frame.config(bg=theme['bg'])
+            theme_btn.config(bg=theme['button_excel'], fg=theme['button_fg'])
+        
+        # 상태 라벨들
+        zoom_status_label.config(bg=theme['bg'], fg=theme['fg'])
+        shortcut_label.config(bg=theme['bg'], fg=theme['info_fg'])
+        
+        # 자리 버튼들 (생성된 경우)
+        for row_buttons in seat_buttons:
+            for btn in row_buttons:
+                if btn.winfo_exists():
+                    if btn['text'] == 'X':  # 비활성화된 자리
+                        btn.config(bg=theme['disabled_seat_bg'], fg=theme['disabled_seat_fg'])
+                    elif btn['bg'] == 'yellow' or btn['bg'] == theme['selected_seat_bg']:  # 선택된 자리
+                        btn.config(bg=theme['selected_seat_bg'], fg=theme['selected_seat_fg'])
+                    else:  # 일반 자리
+                        btn.config(bg=theme['seat_bg'], fg=theme['seat_fg'])
+        
+        print(f"테마 적용됨: {theme_name}")
+    except Exception as e:
+        print(f"테마 적용 중 오류: {e}")
+
+def open_theme_selector():
+    """테마 선택 창을 엽니다"""
+    global theme_window
+    
+    # 이미 열려있다면 포커스만 이동
+    if theme_window and theme_window.winfo_exists():
+        theme_window.lift()
+        theme_window.focus_force()
+        return
+    
+    # 새 창 생성
+    theme_window = Toplevel(root)
+    theme_window.title("테마 설정")
+    theme_window.geometry("500x400")
+    theme_window.config(bg=THEMES[current_theme]['bg'])
+    theme_window.resizable(False, False)
+    
+    # 창이 닫힐 때 전역 변수 정리
+    def on_closing():
+        global theme_window
+        try:
+            theme_window.destroy()
+        except:
+            pass
+        theme_window = None
+    
+    theme_window.protocol("WM_DELETE_WINDOW", on_closing)
+    
+    # 메인 프레임
+    main_frame = Frame(theme_window, bg=THEMES[current_theme]['bg'])
+    main_frame.pack(expand=True, fill='both', padx=20, pady=20)
+    
+    # 제목
+    title = Label(main_frame, text="🎨 테마 선택", 
+                 font=('맑은 고딕', 18, 'bold'), 
+                 bg=THEMES[current_theme]['bg'], 
+                 fg=THEMES[current_theme]['title_fg'])
+    title.pack(pady=(0, 10))
+    
+    # 설명
+    info = Label(main_frame, text="원하는 테마를 선택해주세요", 
+                font=('맑은 고딕', 10), 
+                bg=THEMES[current_theme]['bg'], 
+                fg=THEMES[current_theme]['info_fg'])
+    info.pack(pady=(0, 20))
+    
+    # 테마 버튼들
+    themes_info = [
+        ('light', '☀️ 라이트 모드', '밝고 깔끔한 기본 테마'),
+        ('dark', '🌙 다크 모드', '어두운 배경의 눈이 편한 테마'),
+        ('blue', '💙 블루 테마', '시원한 파란색 테마'),
+        ('green', '💚 그린 테마', '자연스러운 녹색 테마'),
+        ('purple', '💜 퍼플 테마', '고급스러운 보라색 테마')
+    ]
+    
+    for theme_key, theme_name, theme_desc in themes_info:
+        btn_frame = Frame(main_frame, bg=THEMES[current_theme]['bg'])
+        btn_frame.pack(pady=5, fill='x')
+        
+        def make_select_theme(tk):
+            return lambda: [apply_theme(tk), on_closing()]
+        
+        theme_btn = Button(btn_frame, text=theme_name, 
+                          command=make_select_theme(theme_key),
+                          font=('맑은 고딕', 12, 'bold'), 
+                          bg=THEMES[theme_key]['button_generate'], 
+                          fg=THEMES[theme_key]['button_fg'],
+                          relief='raised', bd=2, width=20, height=2)
+        theme_btn.pack(side='left', padx=5)
+        
+        desc_label = Label(btn_frame, text=theme_desc, 
+                          font=('맑은 고딕', 9), 
+                          bg=THEMES[current_theme]['bg'], 
+                          fg=THEMES[current_theme]['info_fg'])
+        desc_label.pack(side='left', padx=10)
+        
+        # 현재 선택된 테마 표시
+        if theme_key == current_theme:
+            check_label = Label(btn_frame, text="✓", 
+                              font=('맑은 고딕', 14, 'bold'), 
+                              bg=THEMES[current_theme]['bg'], 
+                              fg='green')
+            check_label.pack(side='left')
+
+
+
 def toggle_exclude(num, button):
     if num in excluded:
         excluded.remove(num)
@@ -204,6 +486,8 @@ def generate_candidate_buttons():
     total_seats = TOTAL_SEATS
     cols = COLS
     rows = ROWS
+    
+    theme = THEMES[current_theme]
 
     for i in range(rows):
         row_buttons = []
@@ -213,7 +497,7 @@ def generate_candidate_buttons():
                 break
 
             btn = Button(frame, text='', width=8, height=3, font=('맑은 고딕', int(12 * current_scale)),
-                         bg='lightblue', fg='black', command=lambda i=i, j=j: select_seat(i, j))
+                         bg=theme['seat_bg'], fg=theme['seat_fg'], command=lambda i=i, j=j: select_seat(i, j))
 
             # 그룹 간 간격 조정 (2개씩 붙이고 그룹 사이 넓게)
             if j % 2 == 0:
@@ -229,15 +513,16 @@ def generate_candidate_buttons():
 def select_seat(i, j):
     global selected, first_selected_seat
     idx = i * len(seat_buttons[0]) + j + 1
+    theme = THEMES[current_theme]
     
     # 자리 생성 단계에서는 자리 비활성화
     if is_seat_creation_phase:
         if idx in selected:
             selected.remove(idx)
-            seat_buttons[i][j].config(bg='lightblue', text='')
+            seat_buttons[i][j].config(bg=theme['seat_bg'], fg=theme['seat_fg'], text='')
         else:
             selected.add(idx)
-            seat_buttons[i][j].config(bg='lightgray', text='X', fg='black')
+            seat_buttons[i][j].config(bg=theme['disabled_seat_bg'], fg=theme['disabled_seat_fg'], text='X')
     # 자리 배치 단계에서는 자리 교환
     else:
         # 비활성화된 자리(X)는 선택할 수 없음
@@ -246,7 +531,7 @@ def select_seat(i, j):
             
         if first_selected_seat is None:
             first_selected_seat = (i, j)
-            seat_buttons[i][j].config(bg='yellow')
+            seat_buttons[i][j].config(bg=theme['selected_seat_bg'], fg=theme['selected_seat_fg'])
         else:
             # 두 번째 자리 선택 시 교환
             i1, j1 = first_selected_seat
@@ -255,8 +540,8 @@ def select_seat(i, j):
             temp_bg = seat_buttons[i1][j1]['bg']
             
             # 두 자리의 텍스트와 배경색 교환
-            seat_buttons[i1][j1].config(text=seat_buttons[i][j]['text'], bg='lightblue')
-            seat_buttons[i][j].config(text=temp_text, bg='lightblue')
+            seat_buttons[i1][j1].config(text=seat_buttons[i][j]['text'], bg=theme['seat_bg'], fg=theme['seat_fg'])
+            seat_buttons[i][j].config(text=temp_text, bg=theme['seat_bg'], fg=theme['seat_fg'])
             
             # 자리 배정 상태 업데이트
             if temp_text and seat_buttons[i][j]['text']:
@@ -297,6 +582,7 @@ def generate_seats():
     total_seats = TOTAL_SEATS
     cols = COLS  # 6열로 고정
     rows = ROWS  # 3행으로 고정
+    theme = THEMES[current_theme]
 
     # 제외된 학생을 제외한 학생 리스트 생성
     available_students = [i for i in range(1, nums + 1) if i not in excluded]
@@ -320,17 +606,17 @@ def generate_seats():
             # 현재 자리가 비활성화된 자리인 경우
             if idx in selected:
                 btn = Button(frame, text='X', width=8, height=3, font=('맑은 고딕', int(12 * current_scale)),
-                             bg='lightgray', fg='black', state='disabled')
+                             bg=theme['disabled_seat_bg'], fg=theme['fg'], state='disabled')
             # 현재 자리에 배정할 학생이 있는 경우
             elif student_idx < len(available_students):
                 student = available_students[student_idx]
                 student_idx += 1
                 btn = Button(frame, text=str(student), width=8, height=3, font=('맑은 고딕', int(12 * current_scale)),
-                             bg='lightblue', fg='black', command=lambda i=i, j=j: select_seat(i, j))
+                             bg=theme['seat_bg'], fg=theme['seat_fg'], command=lambda i=i, j=j: select_seat(i, j))
                 current_seat_assignment[str(student)] = (i, j)
             else:
                 btn = Button(frame, text='', width=8, height=3, font=('맑은 고딕', int(12 * current_scale)),
-                             bg='lightgray', fg='black', state='disabled')
+                             bg=theme['disabled_seat_bg'], fg=theme['fg'], state='disabled')
             
             # 그룹 간 간격 조정 (2개씩 붙이고 그룹 사이 넓게)
             if j % 2 == 0:
@@ -909,19 +1195,19 @@ btn_frame.grid(row=4, column=0, columnspan=4, pady=10)
 
 btn_generate_candidates = Button(btn_frame, text='자리 생성', 
                                command=generate_candidate_buttons,
-                               font=('맑은 고딕', 11, 'bold'), bg='#4CAF50', fg='#000000',
+                               font=('맑은 고딕', 11, 'bold'), bg='#4CAF50', fg='black',
                                relief='raised', bd=2, width=10)
 btn_generate_candidates.grid(row=0, column=0, padx=5, pady=5)
 
 btn_generate_seats = Button(btn_frame, text='자리 배치', 
                           command=start_countdown_and_generate_seats,
-                          font=('맑은 고딕', 11, 'bold'), bg='#2196F3', fg='#000000',
+                          font=('맑은 고딕', 11, 'bold'), bg='#2196F3', fg='black',
                           relief='raised', bd=2, width=10, state='disabled')
 btn_generate_seats.grid(row=0, column=1, padx=5, pady=5)
 
 btn_create_excel = Button(btn_frame, text='엑셀 생성', 
                          command=create_excel_file,
-                         font=('맑은 고딕', 11, 'bold'), bg='#FF9800', fg='#000000',
+                         font=('맑은 고딕', 11, 'bold'), bg='#FF9800', fg='black',
                          relief='raised', bd=2, width=10)
 btn_create_excel.grid(row=0, column=2, padx=5, pady=5)
 
@@ -941,7 +1227,7 @@ def set_inputs_state(state):
 
 # 칠판 위치 표시 라벨
 blackboard_label = Button(input_frame, text="칠판", 
-                        font=('맑은 고딕', 11, 'bold'), bg='#FF9800', fg='#000000',
+                        font=('맑은 고딕', 11, 'bold'), bg='#FF9800', fg='black',
                          relief='raised', bd=2, width=100)
 blackboard_label.grid(row=5, column=0, columnspan=4, pady=5)
 
@@ -959,9 +1245,19 @@ update_button_frame.pack(side='bottom', anchor='sw', padx=10, pady=5)
 
 update_content_btn = Button(update_button_frame, text='업데이트 내용', 
                            command=open_update_editor,
-                           font=('맑은 고딕', 11, 'bold'), bg='#4CAF50', fg='#000000',
+                           font=('맑은 고딕', 11, 'bold'), bg='#4CAF50', fg='black',
                            relief='raised', bd=2, width=10)
 update_content_btn.pack()
+
+# 테마 변경 버튼 추가 (왼쪽 하단, 업데이트 내용 버튼 위)
+theme_button_frame = Frame(main_container, bg='white')
+theme_button_frame.pack(side='bottom', anchor='sw', padx=10, pady=5)
+
+theme_btn = Button(theme_button_frame, text='🎨 테마 변경', 
+                  command=open_theme_selector,
+                  font=('맑은 고딕', 11, 'bold'), bg='#FF9800', fg='black',
+                  relief='raised', bd=2, width=10)
+theme_btn.pack()
 
 # 확대/축소 상태 표시 라벨 (root에 직접 배치하여 오른쪽 맨 밑에 배치)
 zoom_status_label = Label(root, text="확대/축소: 100%", font=('맑은 고딕', 10), bg='white', fg='black')
