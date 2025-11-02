@@ -1,5 +1,5 @@
 # 2025년도에 만든 교실 자리 뽑기 프로그램 V2
-# 2025.10.31 - V2.6.3
+# 2025.11.03 - V2.6.5
 import tkinter as tk
 from tkinter import *
 import random as r
@@ -15,7 +15,7 @@ TOTAL_SEATS = 18
 COLS = 6
 ROWS = 3
 MAX_REPEAT = 100  # 자동 배치 최대 반복 횟수
-AUTO_RUN_DELAY_MS = 500  # 자동 배치 간격(ms) - 0.5초
+AUTO_RUN_DELAY_MS = 250  # 자동 배치 간격(ms) - 250밀리초
 
 # 전역 변수
 excluded = set()  # 제외할 번호
@@ -28,8 +28,9 @@ current_scale = 1.0  # 현재 UI 크기 배율
 update_window = None  # 업데이트 내용 편집 창
 auto_run_active = False  # 자동 반복 실행 중 여부
 speed_factor = 1.0      # 자동 반복 속도 배수(1.0=기본, 0.5=2배 빠름)
-speed_key_press_count = 0  # 자동 반복 중 속도키('1') 누른 횟수 누적
-speed_boost_applied = False  # 속도 증가 이미 적용 여부
+speed_key_press_count = 0  # 속도키('1') 누른 횟수
+speed_key_press_times = []  # 속도키 입력 타임스탬프 기록
+speed_boost_timeout = 1.0  # 1초 이내에 2번 눌러야 함
 boost_count = 0         # 적용된 2배 속도 부스트 횟수(0=기본,1=x2,2=x4,3=x8)
 current_theme = 'green'  # 현재 테마
 theme_window = None  # 테마 설정 창
@@ -42,9 +43,9 @@ THEMES = {
         'title_fg': '#F30000',
         'input_bg': 'white',
         'input_fg': 'black',
-        'button_generate': '#4CAF50',
-        'button_assign': '#2196F3',
-        'button_excel': '#FF9800',
+        'button_generate': '#d0d0d0',
+        'button_assign': '#d0d0d0',
+        'button_excel': '#d0d0d0',
         'button_fg': 'black',
         'seat_bg': 'lightblue',
         'seat_fg': 'black',
@@ -52,31 +53,31 @@ THEMES = {
         'disabled_seat_fg': 'black',
         'selected_seat_bg': 'yellow',
         'selected_seat_fg': 'black',
-        'blackboard_bg': '#FF9800',
+        'blackboard_bg': '#d0d0d0',
         'blackboard_fg': 'black',
         'info_fg': '#666666',
         'countdown_fg': 'red'
     },
     'dark': {
-        'bg': '#1e1e1e',
-        'fg': '#ffffff',
-        'title_fg': '#FF6B6B',
-        'input_bg': '#2d2d2d',
-        'input_fg': '#ffffff',
-        'button_generate': '#4CAF50',
-        'button_assign': '#2196F3',
-        'button_excel': '#FF9800',
-        'button_fg': 'black',
-        'seat_bg': '#1565c0',
-        'seat_fg': '#ffffff',
-        'disabled_seat_bg': '#424242',
-        'disabled_seat_fg': '#ffffff',
-        'selected_seat_bg': '#fdd835',
-        'selected_seat_fg': '#000000',
-        'blackboard_bg': '#FF9800',
-        'blackboard_fg': 'black',
-        'info_fg': '#b0b0b0',
-        'countdown_fg': '#ff5252'
+        'bg': '#0d0d0d',
+        'fg': '#e0e0e0',
+        'title_fg': '#ff6b6b',
+        'input_bg': '#e0e0e0',
+        'input_fg': '#1a1a1a',
+        'button_generate': '#1a1a1a',
+        'button_assign': '#1a1a1a',
+        'button_excel': '#1a1a1a',
+        'button_fg': '#1a1a1a',
+        'seat_bg': '#e0e0e0',
+        'seat_fg': '#1a1a1a',
+        'disabled_seat_bg': '#e0e0e0',
+        'disabled_seat_fg': '#1a1a1a',
+        'selected_seat_bg': '#e0e0e0',
+        'selected_seat_fg': '#1a1a1a',
+        'blackboard_bg': '#e0e0e0',
+        'blackboard_fg': '#1a1a1a',
+        'info_fg': '#e0e0e0',
+        'countdown_fg': '#ff6b6b'
     },
     'blue': {
         'bg': '#e3f2fd',
@@ -291,12 +292,20 @@ def apply_theme(theme_name):
         btn_frame.config(bg=theme['bg'])
         
         # 버튼들
-        btn_generate_candidates.config(bg=theme['button_generate'], fg=theme['button_fg'])
-        btn_generate_seats.config(bg=theme['button_assign'], fg=theme['button_fg'])
-        btn_create_excel.config(bg=theme['button_excel'], fg=theme['button_fg'])
+        btn_generate_candidates.config(bg=theme['button_generate'], fg=theme['button_fg'], 
+                                       highlightbackground=theme['button_generate'], 
+                                       activebackground=theme['button_generate'])
+        btn_generate_seats.config(bg=theme['button_assign'], fg=theme['button_fg'],
+                                 highlightbackground=theme['button_assign'],
+                                 activebackground=theme['button_assign'])
+        btn_create_excel.config(bg=theme['button_excel'], fg=theme['button_fg'],
+                               highlightbackground=theme['button_excel'],
+                               activebackground=theme['button_excel'])
         
         # 칠판
-        blackboard_label.config(bg=theme['blackboard_bg'], fg=theme['blackboard_fg'])
+        blackboard_label.config(bg=theme['blackboard_bg'], fg=theme['blackboard_fg'],
+                               highlightbackground=theme['blackboard_bg'],
+                               activebackground=theme['blackboard_bg'])
         
         # 자리 배치 프레임
         frame.config(bg=theme['bg'])
@@ -306,12 +315,16 @@ def apply_theme(theme_name):
         
         # 업데이트 버튼 프레임
         update_button_frame.config(bg=theme['bg'])
-        update_content_btn.config(bg=theme['button_generate'], fg=theme['button_fg'])
+        update_content_btn.config(bg=theme['button_generate'], fg=theme['button_fg'],
+                                 highlightbackground=theme['button_generate'],
+                                 activebackground=theme['button_generate'])
         
         # 테마 버튼 (추가될 예정)
         if 'theme_button_frame' in globals() and theme_button_frame.winfo_exists():
             theme_button_frame.config(bg=theme['bg'])
-            theme_btn.config(bg=theme['button_excel'], fg=theme['button_fg'])
+            theme_btn.config(bg=theme['button_excel'], fg=theme['button_fg'],
+                           highlightbackground=theme['button_excel'],
+                           activebackground=theme['button_excel'])
         
         # 상태 라벨들
         zoom_status_label.config(bg=theme['bg'], fg=theme['fg'])
@@ -577,6 +590,10 @@ def animate_slot_machine(btn, final_number, available_students, iteration=0, max
     """슬롯머신처럼 숫자가 돌아가는 애니메이션"""
     theme = THEMES[current_theme]
     
+    # 버튼이 존재하는지 확인
+    if not btn.winfo_exists():
+        return
+    
     if iteration < max_iterations:
         # 랜덤 숫자 표시 (점점 느려지는 효과)
         random_num = r.choice(available_students)
@@ -591,7 +608,7 @@ def animate_slot_machine(btn, final_number, available_students, iteration=0, max
         if show_highlight:
             # 깜빡이는 효과 (1회 실행 또는 마지막 반복일 때만)
             btn.config(bg=theme['selected_seat_bg'], fg=theme['selected_seat_fg'])
-            root.after(200, lambda: btn.config(bg=theme['seat_bg'], fg=theme['seat_fg']))
+            root.after(200, lambda: btn.config(bg=theme['seat_bg'], fg=theme['seat_fg']) if btn.winfo_exists() else None)
         else:
             # 하이라이트 없이 바로 표시
             btn.config(bg=theme['seat_bg'], fg=theme['seat_fg'])
@@ -599,6 +616,10 @@ def animate_slot_machine(btn, final_number, available_students, iteration=0, max
 def animate_slot_machine_quick(btn, final_number, available_students, iteration=0, max_iterations=5):
     """빠른 슬롯머신 애니메이션 (자동 반복용)"""
     theme = THEMES[current_theme]
+    
+    # 버튼이 존재하는지 확인
+    if not btn.winfo_exists():
+        return
     
     if iteration < max_iterations:
         # 랜덤 숫자 표시 (빠른 속도)
@@ -1089,6 +1110,21 @@ def start_countdown_and_generate_seats():
     if not seat_buttons:
         messagebox.showerror("오류", "먼저 자리 생성을 완료해주세요!")
         return
+    
+    # 이미 자리가 배치되어 있는지 확인 (버튼에 숫자가 있으면 배치된 것)
+    is_already_assigned = False
+    for row_buttons in seat_buttons:
+        for btn in row_buttons:
+            if btn.winfo_exists() and btn['text'] not in ['X', '']:
+                # 숫자가 있으면 이미 배치된 것
+                is_already_assigned = True
+                break
+        if is_already_assigned:
+            break
+    
+    # 이미 배치되어 있으면 자리 생성 상태로 초기화
+    if is_already_assigned:
+        generate_candidate_buttons()
         
     if not can_assign_seats():
         return
@@ -1122,31 +1158,37 @@ def start_countdown_and_generate_seats():
             if btn.winfo_exists():
                 btn.config(state='disabled')
     
-    # 개선된 카운트다운 메시지
-    countdown_label.config(text='3', fg=theme['countdown_fg'])
-    root.after(700, lambda: countdown_label.config(text='2', fg=theme['countdown_fg']))
-    root.after(1400, lambda: countdown_label.config(text='1', fg=theme['countdown_fg']))
-    if total_runs == 1:
-        # 1회 실행: 카운트다운 후 바로 애니메이션 시작
-        def start_single_animation():
+    # 깔끔한 카운트다운: 3 → 2 → 1
+    def show_countdown(number):
+        if number > 0:
+            countdown_label.config(text=str(number), fg=theme['countdown_fg'])
+            root.after(600, lambda: show_countdown(number - 1))
+        else:
             countdown_label.config(text='')
+            start_after_countdown()
+    
+    def start_after_countdown():
+        if total_runs == 1:
+            # 1회 실행: 애니메이션과 함께
             generate_seats_with_animation()
-            # 애니메이션 완료 후 입력 활성화
             root.after(2000, lambda: set_inputs_state('normal'))
-        root.after(2100, start_single_animation)
-    else:
-        # 자동 반복 상태 초기화 및 활성화 (애니메이션 없이 빠르게)
-        global auto_run_active, speed_factor, speed_key_press_count, speed_boost_applied, boost_count
-        auto_run_active = True
-        speed_factor = 1.0
-        speed_key_press_count = 0
-        speed_boost_applied = False
-        boost_count = 0
-        root.after(2100, lambda: run_generate_iterations(total_runs, total_runs, show_progress))
+        else:
+            # 자동 반복 상태 초기화 및 활성화
+            global auto_run_active, speed_factor, speed_key_press_count, speed_key_press_times, boost_count
+            auto_run_active = True
+            speed_factor = 1.0
+            speed_key_press_count = 0
+            speed_key_press_times = []
+            boost_count = 0
+            run_generate_iterations(total_runs, total_runs, show_progress)
+    
+    # 카운트다운 시작
+    show_countdown(3)
+
 
 def run_generate_iterations(remaining, total, show_progress=True):
     """자리 배치를 remaining 횟수만큼 자동으로 반복 실행"""
-    global auto_run_active, speed_factor, speed_key_press_count, speed_boost_applied, boost_count
+    global auto_run_active, speed_factor, speed_key_press_count, speed_key_press_times, boost_count
     theme = THEMES[current_theme]
     
     if remaining <= 0:
@@ -1155,7 +1197,7 @@ def run_generate_iterations(remaining, total, show_progress=True):
         auto_run_active = False
         speed_factor = 1.0
         speed_key_press_count = 0
-        speed_boost_applied = False
+        speed_key_press_times = []
         boost_count = 0
         return
     
@@ -1163,26 +1205,17 @@ def run_generate_iterations(remaining, total, show_progress=True):
     is_last = remaining == 1
     
     if show_progress:
-        # 진행 상황 표시 개선
-        if is_last:
-            # 마지막 회차
-            speed_text = f" x{2 ** boost_count}" if boost_count > 0 else ""
-            countdown_label.config(
-                text=f"({done}/{total}){speed_text}",
-                fg=theme['countdown_fg']
-            )
-        else:
-            # 중간 회차
-            speed_text = f" x{2 ** boost_count}" if boost_count > 0 else ""
-            percentage = int((done / total) * 100)
-            countdown_label.config(
-                text=f"{percentage}% ({done}/{total}){speed_text}",
-                fg=theme['info_fg']
-            )
+        # 진행 상황 표시 - 심플하게
+        speed_text = f" x{2 ** boost_count}" if boost_count > 0 else ""
+        percentage = int((done / total) * 100)
+        countdown_label.config(
+            text=f"{percentage}% ({done}/{total}){speed_text}",
+            fg=theme['info_fg']
+        )
     
     # 마지막 회차는 긴 애니메이션, 그 외에는 빠른 애니메이션
     if is_last:
-        # 완료 메시지를 먼저 표시
+        # 완료 메시지
         countdown_label.config(text='완료!', fg=theme['countdown_fg'])
         
         # 마지막 회차 - 완전한 애니메이션 효과
@@ -1190,14 +1223,13 @@ def run_generate_iterations(remaining, total, show_progress=True):
         
         # 애니메이션이 완전히 끝난 후 마무리
         def _finalize_after_last():
-            # 완료 메시지 2초 더 유지 후 제거
-            root.after(2000, lambda: countdown_label.config(text=''))
+            root.after(1500, lambda: countdown_label.config(text=''))
             set_inputs_state('normal')
-            global auto_run_active, speed_factor, speed_key_press_count, speed_boost_applied, boost_count
+            global auto_run_active, speed_factor, speed_key_press_count, speed_key_press_times, boost_count
             auto_run_active = False
             speed_factor = 1.0
             speed_key_press_count = 0
-            speed_boost_applied = False
+            speed_key_press_times = []
             boost_count = 0
         # 애니메이션 완료 시간(약 2초) 후 마무리 실행
         root.after(2000, _finalize_after_last)
@@ -1211,45 +1243,96 @@ def run_generate_iterations(remaining, total, show_progress=True):
                 if btn.winfo_exists() and btn['text'] != 'X':
                     btn.config(state='disabled')
         
-        # 현재 속도 배수 적용하여 다음 실행 스케줄링
-        # 빠른 애니메이션 시간을 고려 (약 200ms)
-        delay_ms = max(200, int(AUTO_RUN_DELAY_MS * speed_factor))
+        # 반복 횟수에 따라 자동으로 간격 조정
+        # total이 10 이하: 기본 속도
+        # total이 20: 0.75배 속도 (1.33배 빠름)
+        # total이 50: 0.5배 속도 (2배 빠름)
+        # total이 100 이상: 0.3배 속도 (3.33배 빠름)
+        if total <= 10:
+            auto_speed_factor = 1.0
+        elif total <= 20:
+            auto_speed_factor = 0.75
+        elif total <= 50:
+            auto_speed_factor = 0.5
+        else:
+            auto_speed_factor = 0.3
+        
+        # 현재 속도 배수와 자동 속도 배수 모두 적용
+        delay_ms = int(AUTO_RUN_DELAY_MS * speed_factor * auto_speed_factor)
         root.after(delay_ms, lambda: run_generate_iterations(remaining - 1, total, show_progress))
 
 def on_speed_key_press(event=None):
-    """자동 반복 중 '1' 키 4회 입력마다 속도 2배 증가(최대 x8)"""
-    global speed_key_press_count, speed_factor, boost_count
+    """
+    자동 반복 중 '1' 키를 1초 이내에 2회 입력하면 속도 2배 증가 (최대 x8)
+    - 1초 이내에 2번 눌러야 배속 적용
+    - 화면에는 속도 배수만 표시
+    - 최대 x8 (3회 부스트)까지 가능
+    """
+    import time
+    global speed_key_press_count, speed_key_press_times, speed_factor, boost_count
     theme = THEMES[current_theme]
     
+    # 자동 반복 모드가 아니면 무시
     if not auto_run_active:
         return
-    speed_key_press_count += 1
-    if speed_key_press_count >= 4:
-        if boost_count < 3:  # x2, x4, x8 까지만
-            boost_count += 1
-            speed_factor *= 0.5  # 딜레이 절반 → 2배 속도
-            # 진행 라벨에 속도 배수 표시 업데이트
-            try:
-                current_text = countdown_label.cget('text')
-                if current_text:
-                    # 기존 속도 표시 제거하고 새로 추가
-                    if 'x' in current_text and current_text.count('x') > 0:
-                        # 마지막 x 이전까지만 가져오기
-                        parts = current_text.rsplit('x', 1)
-                        base_text = parts[0].rstrip()
-                    else:
-                        # ) 기준으로 분리
-                        if ')' in current_text:
-                            parts = current_text.split(')')
-                            base_text = parts[0] + ')'
-                        else:
-                            base_text = current_text
-                    
-                    speed_text = f" x{2 ** boost_count}"
-                    countdown_label.config(text=f"{base_text}{speed_text}")
-            except Exception:
-                pass
-        speed_key_press_count = 0
+    
+    current_time = time.time()
+    
+    # 1초 이상 지난 입력 기록 제거
+    speed_key_press_times = [t for t in speed_key_press_times if current_time - t <= speed_boost_timeout]
+    
+    # 현재 입력 시간 추가
+    speed_key_press_times.append(current_time)
+    speed_key_press_count = len(speed_key_press_times)
+    
+    # 2번째 입력 시 배속 적용
+    if speed_key_press_count >= 2:
+        try:
+            current_text = countdown_label.cget('text')
+            if not current_text:
+                return
+                
+            # 기존 속도 표시 제거
+            base_text = current_text
+            if 'x' in base_text and base_text.count('x') > 0:
+                # 속도 배수 표시 제거
+                base_text = base_text.rsplit('x', 1)[0].rstrip()
+            
+            # 배속 적용
+            if boost_count < 3:  # 최대 x8까지만 (부스트 3회)
+                boost_count += 1
+                speed_factor *= 0.5  # 딜레이 절반 = 속도 2배
+                
+                # 속도 배수 표시 추가
+                speed_multiplier = 2 ** boost_count
+                speed_text = f" x{speed_multiplier}"
+                countdown_label.config(text=f"{base_text}{speed_text}")
+                
+                # 시각적 피드백 (깜빡임 효과)
+                def blink_effect(times=2):
+                    if times <= 0:
+                        return
+                    current_color = countdown_label.cget('fg')
+                    # 색상 토글
+                    new_color = 'white' if current_color == theme['countdown_fg'] else theme['countdown_fg']
+                    countdown_label.config(fg=new_color)
+                    root.after(100, lambda: blink_effect(times - 1))
+                
+                blink_effect()
+            else:
+                # 이미 최대 속도 (x8)
+                speed_multiplier = 2 ** boost_count
+                speed_text = f" x{speed_multiplier} (MAX)"
+                countdown_label.config(text=f"{base_text}{speed_text}")
+            
+            # 입력 기록 초기화
+            speed_key_press_times = []
+            speed_key_press_count = 0
+                
+        except Exception as e:
+            # 오류 발생 시 디버깅용 출력
+            print(f"속도 조절 중 오류: {e}")
+            pass
 
 def set_border_to_merged_range(ws, merge_range, border):
     min_col, min_row, max_col, max_row = range_boundaries(merge_range)
@@ -1381,86 +1464,86 @@ def load_update_content(text_widget):
 root = Tk()
 root.title("교실 자리 배치 프로그램")
 root.geometry("1000x800")  # 기본 크기 설정
-root.config(bg=THEMES['green']['bg'])
+root.config(bg=THEMES[current_theme]['bg'])
 
 # 전체화면에서 중앙 정렬을 위한 메인 컨테이너 프레임
-main_container = Frame(root, bg=THEMES['green']['bg'])
+main_container = Frame(root, bg=THEMES[current_theme]['bg'])
 main_container.pack(expand=True, fill='both', padx=20, pady=20)
 
 # 타이틀 라벨
 title_label = Label(main_container, text=Title_Text, 
-                   bg=THEMES['green']['bg'], fg=THEMES['green']['title_fg'], font=('맑은 고딕', 24, 'bold'))
+                   bg=THEMES[current_theme]['bg'], fg=THEMES[current_theme]['title_fg'], font=('맑은 고딕', 24, 'bold'))
 title_label.pack(pady=(0, 15))
 
 # 입력 프레임 생성
-input_frame = Frame(main_container, bg=THEMES['green']['bg'])
+input_frame = Frame(main_container, bg=THEMES[current_theme]['bg'])
 input_frame.pack(pady=(0, 20))
 
 # 입력 필드들 - 첫 번째 행
-label_grade_frame = Frame(input_frame, bg=THEMES['green']['bg'])
+label_grade_frame = Frame(input_frame, bg=THEMES[current_theme]['bg'])
 label_grade_frame.grid(row=0, column=0, padx=10, pady=5, sticky='e')
-Label(label_grade_frame, text='학년', bg=THEMES['green']['bg'], fg=THEMES['green']['fg'], font=('맑은 고딕', 12, 'bold')).pack(side='left')
-Label(label_grade_frame, text='*', bg=THEMES['green']['bg'], fg='red', font=('맑은 고딕', 12, 'bold')).pack(side='left')
-entry_grade = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg=THEMES['green']['input_bg'], fg=THEMES['green']['input_fg'])
+Label(label_grade_frame, text='학년', bg=THEMES[current_theme]['bg'], fg=THEMES[current_theme]['fg'], font=('맑은 고딕', 12, 'bold')).pack(side='left')
+Label(label_grade_frame, text='*', bg=THEMES[current_theme]['bg'], fg='red', font=('맑은 고딕', 12, 'bold')).pack(side='left')
+entry_grade = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg=THEMES[current_theme]['input_bg'], fg=THEMES[current_theme]['input_fg'])
 entry_grade.grid(row=0, column=1, padx=10, pady=5)
 
-label_group_frame = Frame(input_frame, bg=THEMES['green']['bg'])
+label_group_frame = Frame(input_frame, bg=THEMES[current_theme]['bg'])
 label_group_frame.grid(row=0, column=2, padx=10, pady=5, sticky='e')
-Label(label_group_frame, text='반', bg=THEMES['green']['bg'], fg=THEMES['green']['fg'], font=('맑은 고딕', 12, 'bold')).pack(side='left')
-Label(label_group_frame, text='*', bg=THEMES['green']['bg'], fg='red', font=('맑은 고딕', 12, 'bold')).pack(side='left')
-entry_group = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg=THEMES['green']['input_bg'], fg=THEMES['green']['input_fg'])
+Label(label_group_frame, text='반', bg=THEMES[current_theme]['bg'], fg=THEMES[current_theme]['fg'], font=('맑은 고딕', 12, 'bold')).pack(side='left')
+Label(label_group_frame, text='*', bg=THEMES[current_theme]['bg'], fg='red', font=('맑은 고딕', 12, 'bold')).pack(side='left')
+entry_group = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg=THEMES[current_theme]['input_bg'], fg=THEMES[current_theme]['input_fg'])
 entry_group.grid(row=0, column=3, padx=10, pady=5)
 
 # 두 번째 행
-label_students_frame = Frame(input_frame, bg=THEMES['green']['bg'])
+label_students_frame = Frame(input_frame, bg=THEMES[current_theme]['bg'])
 label_students_frame.grid(row=1, column=0, padx=10, pady=5, sticky='e')
-Label(label_students_frame, text='학생 수\n(1~18)', bg=THEMES['green']['bg'], fg=THEMES['green']['fg'], font=('맑은 고딕', 12, 'bold')).pack(side='left')
-Label(label_students_frame, text='*', bg=THEMES['green']['bg'], fg='red', font=('맑은 고딕', 12, 'bold')).pack(side='left')
-entry_students = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg=THEMES['green']['input_bg'], fg=THEMES['green']['input_fg'])
+Label(label_students_frame, text='학생 수\n(1~18)', bg=THEMES[current_theme]['bg'], fg=THEMES[current_theme]['fg'], font=('맑은 고딕', 12, 'bold')).pack(side='left')
+Label(label_students_frame, text='*', bg=THEMES[current_theme]['bg'], fg='red', font=('맑은 고딕', 12, 'bold')).pack(side='left')
+entry_students = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg=THEMES[current_theme]['input_bg'], fg=THEMES[current_theme]['input_fg'])
 entry_students.grid(row=1, column=1, padx=10, pady=5)
 
-label_teacher_frame = Frame(input_frame, bg=THEMES['green']['bg'])
+label_teacher_frame = Frame(input_frame, bg=THEMES[current_theme]['bg'])
 label_teacher_frame.grid(row=1, column=2, padx=10, pady=5, sticky='e')
-Label(label_teacher_frame, text='담임선생님', bg=THEMES['green']['bg'], fg=THEMES['green']['fg'], font=('맑은 고딕', 12, 'bold')).pack(side='left')
-Label(label_teacher_frame, text='*', bg=THEMES['green']['bg'], fg='red', font=('맑은 고딕', 12, 'bold')).pack(side='left')
-entry_teacher = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg=THEMES['green']['input_bg'], fg=THEMES['green']['input_fg'])
+Label(label_teacher_frame, text='담임선생님', bg=THEMES[current_theme]['bg'], fg=THEMES[current_theme]['fg'], font=('맑은 고딕', 12, 'bold')).pack(side='left')
+Label(label_teacher_frame, text='*', bg=THEMES[current_theme]['bg'], fg='red', font=('맑은 고딕', 12, 'bold')).pack(side='left')
+entry_teacher = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg=THEMES[current_theme]['input_bg'], fg=THEMES[current_theme]['input_fg'])
 entry_teacher.grid(row=1, column=3, padx=10, pady=5)
 
 # 세 번째 행
-label_repeat = Label(input_frame, text='자동 반복 횟수', bg=THEMES['green']['bg'], fg=THEMES['green']['fg'], font=('맑은 고딕', 12, 'bold'))
+label_repeat = Label(input_frame, text='자동 반복 횟수', bg=THEMES[current_theme]['bg'], fg=THEMES[current_theme]['fg'], font=('맑은 고딕', 12, 'bold'))
 label_repeat.grid(row=2, column=0, padx=10, pady=5, sticky='e')
-entry_repeat = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg=THEMES['green']['input_bg'], fg=THEMES['green']['input_fg'])
+entry_repeat = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg=THEMES[current_theme]['input_bg'], fg=THEMES[current_theme]['input_fg'])
 entry_repeat.grid(row=2, column=1, padx=10, pady=5)
 
-label_exclude = Label(input_frame, text='제외할 번호\n(쉼표로 구분)', bg=THEMES['green']['bg'], fg=THEMES['green']['fg'], font=('맑은 고딕', 12, 'bold'))
+label_exclude = Label(input_frame, text='제외할 번호\n(쉼표로 구분)', bg=THEMES[current_theme]['bg'], fg=THEMES[current_theme]['fg'], font=('맑은 고딕', 12, 'bold'))
 label_exclude.grid(row=2, column=2, padx=10, pady=5, sticky='e')
-entry_exclude = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg=THEMES['green']['input_bg'], fg=THEMES['green']['input_fg'])
+entry_exclude = Entry(input_frame, width=15, font=('맑은 고딕', 12), bd=1, relief='solid', bg=THEMES[current_theme]['input_bg'], fg=THEMES[current_theme]['input_fg'])
 entry_exclude.grid(row=2, column=3, padx=10, pady=5)
 
 # 설명 라벨 - 네 번째 행
 info_label = Label(input_frame, text="사용법: 1. 정보 입력 → 2. 자리 생성 → 3. 비활성화할 자리 선택 → 4. 자리 배치 → 5. 엑셀 생성", 
-                  bg=THEMES['green']['bg'], fg=THEMES['green']['info_fg'], font=('맑은 고딕', 20))
+                  bg=THEMES[current_theme]['bg'], fg=THEMES[current_theme]['info_fg'], font=('맑은 고딕', 20))
 info_label.grid(row=3, column=0, columnspan=4, pady=10)
 
 # 버튼들 - 다섯 번째 행
-btn_frame = Frame(input_frame, bg=THEMES['green']['bg'])
+btn_frame = Frame(input_frame, bg=THEMES[current_theme]['bg'])
 btn_frame.grid(row=4, column=0, columnspan=4, pady=10)
 
 btn_generate_candidates = Button(btn_frame, text='자리 생성', 
                                command=generate_candidate_buttons,
-                               font=('맑은 고딕', 11, 'bold'), bg=THEMES['green']['button_generate'], fg=THEMES['green']['button_fg'],
+                               font=('맑은 고딕', 11, 'bold'), bg=THEMES[current_theme]['button_generate'], fg=THEMES[current_theme]['button_fg'],
                                relief='raised', bd=2, width=10)
 btn_generate_candidates.grid(row=0, column=0, padx=5, pady=5)
 
 btn_generate_seats = Button(btn_frame, text='자리 배치', 
                           command=start_countdown_and_generate_seats,
-                          font=('맑은 고딕', 11, 'bold'), bg=THEMES['green']['button_assign'], fg=THEMES['green']['button_fg'],
+                          font=('맑은 고딕', 11, 'bold'), bg=THEMES[current_theme]['button_assign'], fg=THEMES[current_theme]['button_fg'],
                           relief='raised', bd=2, width=10, state='disabled')
 btn_generate_seats.grid(row=0, column=1, padx=5, pady=5)
 
 btn_create_excel = Button(btn_frame, text='엑셀 생성', 
                          command=create_excel_file,
-                         font=('맑은 고딕', 11, 'bold'), bg=THEMES['green']['button_excel'], fg=THEMES['green']['button_fg'],
+                         font=('맑은 고딕', 11, 'bold'), bg=THEMES[current_theme]['button_excel'], fg=THEMES[current_theme]['button_fg'],
                          relief='raised', bd=2, width=10)
 btn_create_excel.grid(row=0, column=2, padx=5, pady=5)
 
@@ -1480,48 +1563,47 @@ def set_inputs_state(state):
 
 # 칠판 위치 표시 라벨
 blackboard_label = Button(input_frame, text="칠판", 
-                        font=('맑은 고딕', 11, 'bold'), bg=THEMES['green']['blackboard_bg'], fg=THEMES['green']['blackboard_fg'],
+                        font=('맑은 고딕', 11, 'bold'), bg=THEMES[current_theme]['blackboard_bg'], fg=THEMES[current_theme]['blackboard_fg'],
                          relief='raised', bd=2, width=100)
 blackboard_label.grid(row=5, column=0, columnspan=4, pady=5)
 
 # 자리 배치 프레임
-frame = Frame(main_container, bg=THEMES['green']['bg'])
+frame = Frame(main_container, bg=THEMES[current_theme]['bg'])
 frame.pack(pady=20)
 
 # 카운트다운 라벨 추가
-countdown_label = Label(main_container, text='', font=('맑은 고딕', 40, 'bold'), bg=THEMES['green']['bg'], fg=THEMES['green']['countdown_fg'])
+countdown_label = Label(main_container, text='', font=('맑은 고딕', 40, 'bold'), bg=THEMES[current_theme]['bg'], fg=THEMES[current_theme]['countdown_fg'])
 countdown_label.pack(pady=10)
 
 # 왼쪽 하단에 업데이트 내용 버튼 배치
-update_button_frame = Frame(main_container, bg=THEMES['green']['bg'])
+update_button_frame = Frame(main_container, bg=THEMES[current_theme]['bg'])
 update_button_frame.pack(side='bottom', anchor='sw', padx=10, pady=5)
 
 update_content_btn = Button(update_button_frame, text='업데이트 내용', 
                            command=open_update_editor,
-                           font=('맑은 고딕', 11, 'bold'), bg=THEMES['green']['button_generate'], fg=THEMES['green']['button_fg'],
+                           font=('맑은 고딕', 11, 'bold'), bg=THEMES[current_theme]['button_generate'], fg=THEMES[current_theme]['button_fg'],
                            relief='raised', bd=2, width=10)
 update_content_btn.pack()
 
 # 테마 변경 버튼 추가 (왼쪽 하단, 업데이트 내용 버튼 위)
-theme_button_frame = Frame(main_container, bg=THEMES['green']['bg'])
+theme_button_frame = Frame(main_container, bg=THEMES[current_theme]['bg'])
 theme_button_frame.pack(side='bottom', anchor='sw', padx=10, pady=5)
 
 theme_btn = Button(theme_button_frame, text='🎨 테마 변경', 
                   command=open_theme_selector,
-                  font=('맑은 고딕', 11, 'bold'), bg=THEMES['green']['button_excel'], fg=THEMES['green']['button_fg'],
+                  font=('맑은 고딕', 11, 'bold'), bg=THEMES[current_theme]['button_excel'], fg=THEMES[current_theme]['button_fg'],
+                  highlightbackground=THEMES[current_theme]['button_excel'],
+                  activebackground=THEMES[current_theme]['button_excel'],
                   relief='raised', bd=2, width=10)
 theme_btn.pack()
 
 # 확대/축소 상태 표시 라벨 (root에 직접 배치하여 오른쪽 맨 밑에 배치)
-zoom_status_label = Label(root, text="확대/축소: 100%", font=('맑은 고딕', 10), bg=THEMES['green']['bg'], fg=THEMES['green']['fg'])
+zoom_status_label = Label(root, text="확대/축소: 100%", font=('맑은 고딕', 10), bg=THEMES[current_theme]['bg'], fg=THEMES[current_theme]['fg'])
 zoom_status_label.place(relx=1.0, rely=1.0, anchor='se', x=-10, y=-30)
 
 # 단축키 안내 라벨 (root에 직접 배치하여 오른쪽 맨 밑에 배치, zoom_status_label 아래)
 shortcut_label = Label(root, text="단축키: ⌘+ 또는 ⌘= (확대) | ⌘- (축소) | ⌘0 (원래 크기)", 
-                      font=('맑은 고딕', 9), bg=THEMES['green']['bg'], fg=THEMES['green']['info_fg'])
-shortcut_label.place(relx=1.0, rely=1.0, anchor='se', x=-10, y=-10)# 단축키 안내 라벨 (root에 직접 배치하여 오른쪽 하단에 배치)
-shortcut_label = Label(root, text="단축키: ⌘+ 또는 ⌘= (확대) | ⌘- (축소) | ⌘0 (원래 크기)", 
-                      font=('맑은 고딕', 9), bg='white', fg='#666666')
+                      font=('맑은 고딕', 9), bg=THEMES[current_theme]['bg'], fg=THEMES[current_theme]['info_fg'])
 shortcut_label.place(relx=1.0, rely=1.0, anchor='se', x=-10, y=-10)
 
 # 키보드 단축키 바인딩 (macOS 호환성 향상)
@@ -1535,7 +1617,8 @@ root.bind_all('<KeyPress-1>', on_speed_key_press)
 # 숫자 키패드의 1도 인식 (필요 시)
 root.bind_all('<KeyPress-KP_1>', on_speed_key_press)
 
-# 시작 시 기본 테마 적용
+# 시작 시 기본 테마 적용 (중복 체크를 우회하기 위해 임시로 다른 값으로 설정)
+current_theme = None
 apply_theme('green')
 
 root.mainloop()
