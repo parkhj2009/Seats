@@ -586,6 +586,31 @@ def select_seat(i, j):
             # 첫 번째 선택 초기화
             first_selected_seat = None
 
+def animate_seat_shuffle(buttons_data, iteration=0, max_iterations=8):
+    """좌석들이 랜덤하게 위치를 바꾸는 셔플 애니메이션"""
+    theme = THEMES[current_theme]
+    
+    if iteration < max_iterations:
+        # 활성화된 좌석들의 텍스트를 랜덤하게 섞기
+        active_buttons = [(btn, text) for btn, text in buttons_data if text != 'X']
+        
+        if len(active_buttons) > 1:
+            # 텍스트만 추출
+            texts = [text for _, text in active_buttons]
+            # 랜덤하게 섞기
+            shuffled_texts = texts.copy()
+            r.shuffle(shuffled_texts)
+            
+            # 섞인 텍스트를 버튼에 적용
+            for (btn, _), new_text in zip(active_buttons, shuffled_texts):
+                if btn.winfo_exists():
+                    btn.config(text=new_text)
+        
+        # 점점 느려지는 딜레이 (50ms -> 200ms)
+        delay = 50 + (iteration * 20)
+        root.after(delay, lambda: animate_seat_shuffle(buttons_data, iteration + 1, max_iterations))
+    # else: 셔플 완료 - 최종 위치는 이후 슬롯머신 애니메이션에서 결정
+
 def animate_slot_machine(btn, final_number, available_students, iteration=0, max_iterations=15, show_highlight=True):
     """슬롯머신처럼 숫자가 돌아가는 애니메이션"""
     theme = THEMES[current_theme]
@@ -674,6 +699,7 @@ def generate_seats_with_animation(is_last_iteration=True):
     # 먼저 모든 버튼을 생성 (애니메이션용)
     student_idx = 0
     animation_data = []  # (버튼, 최종번호) 저장
+    shuffle_data = []  # 셔플 애니메이션용 (버튼, 임시텍스트)
     
     for i in range(rows):
         row_buttons = []
@@ -685,16 +711,21 @@ def generate_seats_with_animation(is_last_iteration=True):
             if idx in selected:
                 btn = Button(frame, text='X', width=8, height=3, font=('맑은 고딕', int(12 * current_scale)),
                              bg=theme['disabled_seat_bg'], fg=theme['disabled_seat_fg'], state='disabled')
+                shuffle_data.append((btn, 'X'))
             elif student_idx < len(available_students):
                 student = available_students[student_idx]
                 student_idx += 1
-                btn = Button(frame, text='?', width=8, height=3, font=('맑은 고딕', int(12 * current_scale)),
+                # 초기에는 임시 번호를 표시 (셔플용)
+                temp_number = str(student)
+                btn = Button(frame, text=temp_number, width=8, height=3, font=('맑은 고딕', int(12 * current_scale)),
                              bg=theme['seat_bg'], fg=theme['seat_fg'], command=lambda i=i, j=j: select_seat(i, j))
                 current_seat_assignment[str(student)] = (i, j)
                 animation_data.append((btn, student))
+                shuffle_data.append((btn, temp_number))
             else:
                 btn = Button(frame, text='', width=8, height=3, font=('맑은 고딕', int(12 * current_scale)),
                              bg=theme['disabled_seat_bg'], fg=theme['disabled_seat_fg'], state='disabled')
+                shuffle_data.append((btn, ''))
             
             if j % 2 == 0:
                 padx_val = (0, 2)
@@ -704,13 +735,21 @@ def generate_seats_with_animation(is_last_iteration=True):
             row_buttons.append(btn)
         seat_buttons.append(row_buttons)
     
-    # 순차적으로 애니메이션 시작 (각 버튼마다 약간씩 딜레이)
-    for idx, (btn, final_num) in enumerate(animation_data):
-        delay = idx * 50  # 50ms씩 순차적으로 시작
-        root.after(delay, lambda b=btn, f=final_num: animate_slot_machine(b, f, available_students, show_highlight=is_last_iteration))
+    # 1단계: 좌석 셔플 애니메이션 (약 1.2초)
+    shuffle_duration = 1200  # 8회 * (50ms + 20ms*7.5 평균) ≈ 1200ms
+    animate_seat_shuffle(shuffle_data, iteration=0, max_iterations=8)
+    
+    # 2단계: 셔플 완료 후 슬롯머신 애니메이션 시작
+    def start_slot_machine():
+        # 순차적으로 애니메이션 시작 (각 버튼마다 약간씩 딜레이)
+        for idx, (btn, final_num) in enumerate(animation_data):
+            delay = idx * 50  # 50ms씩 순차적으로 시작
+            root.after(delay, lambda b=btn, f=final_num: animate_slot_machine(b, f, available_students, show_highlight=is_last_iteration))
+    
+    root.after(shuffle_duration, start_slot_machine)
     
     # 모든 애니메이션이 끝난 후 버튼 활성화
-    total_animation_time = len(animation_data) * 50 + 15 * 100  # 대략적인 총 시간
+    total_animation_time = shuffle_duration + len(animation_data) * 50 + 15 * 100  # 셔플 + 슬롯머신 총 시간
     def enable_buttons():
         for row_buttons in seat_buttons:
             for btn in row_buttons:
