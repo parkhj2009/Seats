@@ -588,7 +588,7 @@ def select_seat(i, j):
 
 def animate_seat_shuffle(buttons_data, iteration=0, max_iterations=8):
     """좌석들이 랜덤하게 위치를 바꾸는 셔플 애니메이션"""
-    theme = THEMES[current_theme]
+    
     
     if iteration < max_iterations:
         # 활성화된 좌석들의 텍스트를 랜덤하게 섞기
