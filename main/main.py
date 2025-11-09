@@ -735,8 +735,8 @@ def generate_seats_with_animation(is_last_iteration=True):
             row_buttons.append(btn)
         seat_buttons.append(row_buttons)
     
-    # 1단계: 좌석 셔플 애니메이션 (약 1.2초)
-    shuffle_duration = 1200  # 8회 * (50ms + 20ms*7.5 평균) ≈ 1200ms
+    # 1단계: 좌석 셔플 애니메이션 (실제 딜레이 합계: 960ms)
+    shuffle_duration = sum(50 + i * 20 for i in range(8))  # 50, 70, ..., 190ms씩 8회 = 960ms
     animate_seat_shuffle(shuffle_data, iteration=0, max_iterations=8)
     
     # 2단계: 셔플 완료 후 슬롯머신 애니메이션 시작
